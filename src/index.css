@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+
+  /* Dynaton Brand Colors */
+  --color-dynaton-red: #CE0505;
+  --color-dynaton-red-dark: #A80404;
+  --color-dynaton-red-light: #F10202;
+  --color-dynaton-teal: #0CA684;
+  --color-dynaton-teal-dark: #098A6E;
+  --color-dynaton-dark: #1F2125;
+  --color-dynaton-gray: #F7F7F7;
+  --color-dynaton-border: #D8D8D8;
+}
+
+/* Base styles */
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+/* Custom utility for line clamping */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
