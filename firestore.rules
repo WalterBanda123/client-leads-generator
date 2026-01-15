@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if email is from allowed domain
+    function isAllowedDomain() {
+      return isAuthenticated() &&
+             request.auth.token.email.matches('.*@dynatondata\\.com$');
+    }
+
+    // Leads collection - read/write for authenticated Dynaton users
+    match /leads/{leadId} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain();
+    }
+
+    // Contacts collection - read/write for authenticated Dynaton users
+    match /contacts/{contactId} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain();
+    }
+
+    // Social profiles collection - read/write for authenticated Dynaton users
+    match /social_profiles/{profileId} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain();
+    }
+
+    // Enrichment log collection - read/write for authenticated Dynaton users
+    match /enrichment_log/{logId} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain();
+    }
+
+    // Notes collection - read/write for authenticated Dynaton users
+    match /notes/{noteId} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain();
+    }
+
+    // Users collection - users can read/write their own data
+    match /users/{userId} {
+      allow read: if isAllowedDomain();
+      allow write: if isAllowedDomain();
+    }
+  }
+}

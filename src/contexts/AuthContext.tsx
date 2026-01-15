@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { signInWithCredential, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
+import { auth } from '../config/firebase';
 import { usersAPI } from '../services/api';
 
 const ALLOWED_DOMAIN = 'dynatondata.com';
@@ -56,7 +58,38 @@ function getStoredUser(): User | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => getStoredUser());
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Listen for Firebase auth state changes to restore session
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email?.endsWith(`@${ALLOWED_DOMAIN}`)) {
+        // Firebase user is authenticated, restore from localStorage if available
+        const storedUser = getStoredUser();
+        if (storedUser && storedUser.email === firebaseUser.email) {
+          setUser(storedUser);
+        } else {
+          // Build user from Firebase auth
+          const userData: User = {
+            google_id: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName || firebaseUser.email,
+            picture: firebaseUser.photoURL || undefined,
+            firstName: firebaseUser.displayName?.split(' ')[0] || 'User',
+          };
+          setUser(userData);
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+        }
+      } else {
+        // Not authenticated or wrong domain
+        setUser(null);
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const login = async (credentialResponse: GoogleCredentialResponse): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -69,6 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error: `Access restricted to @${ALLOWED_DOMAIN} accounts only`
         };
       }
+
+      // Sign in with Firebase using the Google credential
+      const credential = GoogleAuthProvider.credential(credentialResponse.credential);
+      await signInWithCredential(auth, credential);
 
       // Save user to database
       let dbUserId: string | undefined;
@@ -103,12 +140,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
       return { success: true };
-    } catch {
+    } catch (error) {
+      console.error('Login error:', error);
       return { success: false, error: 'Failed to process login' };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     setUser(null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };

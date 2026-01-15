@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "leads-generator-6e370"
-  }
+    "default": "leads-generator-3a10e",
+    "production": "leads-generator-3a10e"
+  },
+  "targets": {},
+  "etags": {}
 }

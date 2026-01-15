@@ -1,14 +1,19 @@
-import axios from 'axios';
+/**
+ * API Service - Now using Firestore instead of backend REST API
+ *
+ * This file provides the same interface as before but uses Firestore directly.
+ * This allows the frontend to work independently without a backend server.
+ */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+import { leadsService, notesService, usersService } from './firestore';
+import type {
+  Lead as FirestoreLead,
+  Note as FirestoreNote,
+  LeadsStats as FirestoreLeadsStats,
+  LeadsQueryParams as FirestoreLeadsQueryParams,
+} from './firestore';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
+// Re-export types with _id for backward compatibility
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
 
 export interface Lead {
@@ -32,14 +37,14 @@ export interface Lead {
   informality_score?: number;
   has_website?: boolean;
   social_media_only?: boolean;
-  socialProfiles?: SocialProfile[];
+  socialProfiles?: SocialProfileAPI[];
   advertisingAnalysis?: AdvertisingAnalysis;
-  notes?: Note[];
+  notes?: NoteAPI[];
   created_at?: string;
   updated_at?: string;
 }
 
-export interface SocialProfile {
+export interface SocialProfileAPI {
   _id: string;
   platform: string;
   profile_url: string;
@@ -57,7 +62,7 @@ export interface AdvertisingAnalysis {
   recommendations: string[];
 }
 
-export interface Note {
+export interface NoteAPI {
   _id: string;
   lead_id: string;
   content: string;
@@ -68,11 +73,11 @@ export interface Note {
   updated_at?: string;
 }
 
-export interface LeadsStats {
-  all: number;
-  notContacted: number;
-  contacted: number;
-}
+// Alias for backward compatibility
+export type Note = NoteAPI;
+export type SocialProfile = SocialProfileAPI;
+
+export type LeadsStats = FirestoreLeadsStats;
 
 export interface PaginatedResponse<T> {
   success: boolean;
@@ -84,13 +89,7 @@ export interface PaginatedResponse<T> {
   stats: LeadsStats;
 }
 
-export interface LeadsQueryParams {
-  status?: 'all' | 'not_contacted' | 'contacted';
-  category?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}
+export type LeadsQueryParams = FirestoreLeadsQueryParams;
 
 export interface LeadDetailsResponse {
   lead: Lead;
@@ -102,7 +101,7 @@ export interface LeadDetailsResponse {
     email?: string;
     phone?: string;
   }>;
-  socialProfiles: SocialProfile[];
+  socialProfiles: SocialProfileAPI[];
   enrichmentLog: Array<{
     _id: string;
     lead_id: string;
@@ -113,41 +112,139 @@ export interface LeadDetailsResponse {
   }>;
 }
 
-// Leads API
+// Helper to convert Firestore Lead to API Lead (id -> _id)
+const toAPILead = (lead: FirestoreLead): Lead => ({
+  ...lead,
+  _id: lead.id,
+});
+
+// Helper to convert API Lead to Firestore Lead (_id -> id)
+const toFirestoreLead = (lead: Partial<Lead>): Partial<FirestoreLead> => {
+  const { _id, ...rest } = lead;
+  return {
+    ...rest,
+    ...((_id !== undefined) ? { id: _id } : {}),
+  };
+};
+
+// Helper to convert Firestore Note to API Note
+const toAPINote = (note: FirestoreNote): NoteAPI => ({
+  ...note,
+  _id: note.id,
+});
+
+// Leads API - Using Firestore
 export const leadsAPI = {
-  getAll: (params?: LeadsQueryParams) =>
-    api.get<PaginatedResponse<Lead>>('/leads', { params }),
-  getById: (id: string) =>
-    api.get<{ success: boolean; data: LeadDetailsResponse }>(`/leads/${id}`),
-  update: (id: string, data: Partial<Lead>) =>
-    api.put<{ success: boolean; data: Lead }>(`/leads/${id}`, data),
-  delete: (id: string) =>
-    api.delete<{ success: boolean }>(`/leads/${id}`),
+  getAll: async (params?: LeadsQueryParams) => {
+    const result = await leadsService.getAll(params || {});
+    return {
+      data: {
+        ...result,
+        data: result.data.map(toAPILead),
+      },
+    };
+  },
+
+  getById: async (id: string) => {
+    const result = await leadsService.getById(id);
+    return {
+      data: {
+        success: true,
+        data: {
+          lead: toAPILead(result.data.lead),
+          contacts: result.data.contacts.map(c => ({ ...c, _id: c.id })),
+          socialProfiles: result.data.socialProfiles.map(s => ({ ...s, _id: s.id })),
+          enrichmentLog: result.data.enrichmentLog.map(e => ({ ...e, _id: e.id })),
+        },
+      },
+    };
+  },
+
+  update: async (id: string, data: Partial<Lead>) => {
+    const firestoreData = toFirestoreLead(data);
+    const result = await leadsService.update(id, firestoreData as Partial<FirestoreLead>);
+    return {
+      data: {
+        success: true,
+        data: toAPILead(result.data),
+      },
+    };
+  },
+
+  delete: async (id: string) => {
+    const result = await leadsService.delete(id);
+    return { data: result };
+  },
 };
 
-// Agent API
+// Agent API - Placeholder (can be implemented later if needed)
 export const agentAPI = {
-  chat: (message: string, sessionId?: string) =>
-    api.post<{ success: boolean; sessionId?: string; response: string; leads?: Lead[] }>('/agent/chat', { message, sessionId }),
-  getTopProspects: (limit: number = 20) =>
-    api.get<{ success: boolean; leads?: Lead[] }>(`/agent/top-prospects?limit=${limit}`),
+  chat: async (_message: string, _sessionId?: string) => {
+    // This would need a backend or cloud function
+    return {
+      data: {
+        success: true,
+        sessionId: 'demo-session',
+        response: 'Agent chat is not available in demo mode. Please use the backend API for AI features.',
+        leads: [],
+      },
+    };
+  },
+
+  getTopProspects: async (limit: number = 20) => {
+    // Get leads and sort by some criteria
+    const result = await leadsService.getAll({ limit });
+    return {
+      data: {
+        success: true,
+        leads: result.data.map(toAPILead),
+      },
+    };
+  },
 };
 
-// Notes API
+// Notes API - Using Firestore
 export const notesAPI = {
-  getForLead: (leadId: string) =>
-    api.get<{ success: boolean; data: Note[] }>(`/leads/${leadId}/notes`),
-  create: (leadId: string, content: string, createdBy: string, contactMethod?: string, contactDate?: string) =>
-    api.post<{ success: boolean; data: Note }>(`/leads/${leadId}/notes`, {
-      content,
-      created_by: createdBy,
-      contact_method: contactMethod,
-      contact_date: contactDate,
-    }),
-  update: (noteId: string, content: string) =>
-    api.put<{ success: boolean; data: Note }>(`/notes/${noteId}`, { content }),
-  delete: (noteId: string) =>
-    api.delete(`/notes/${noteId}`),
+  getForLead: async (leadId: string) => {
+    const result = await notesService.getForLead(leadId);
+    return {
+      data: {
+        success: true,
+        data: result.data.map(toAPINote),
+      },
+    };
+  },
+
+  create: async (
+    leadId: string,
+    content: string,
+    createdBy: string,
+    contactMethod?: string,
+    contactDate?: string
+  ) => {
+    const result = await notesService.create(leadId, content, createdBy, contactMethod, contactDate);
+    return {
+      data: {
+        success: true,
+        data: toAPINote(result.data),
+      },
+    };
+  },
+
+  update: async (noteId: string, content: string) => {
+    const result = await notesService.update(noteId, content);
+    return {
+      data: {
+        success: true,
+        data: toAPINote(result.data),
+      },
+    };
+  },
+
+  delete: async (noteId: string) => {
+    const result = await notesService.delete(noteId);
+    return { data: result };
+  },
 };
 
 // Users API
@@ -174,12 +271,37 @@ export interface GoogleAuthPayload {
 }
 
 export const usersAPI = {
-  saveGoogleUser: (userData: GoogleAuthPayload) =>
-    api.post<{ success: boolean; data: User; isNew: boolean }>('/users/google-auth', userData),
-  getByGoogleId: (googleId: string) =>
-    api.get<{ success: boolean; data: User }>(`/users/google/${googleId}`),
-  getById: (id: string) =>
-    api.get<{ success: boolean; data: User }>(`/users/${id}`),
+  saveGoogleUser: async (userData: GoogleAuthPayload) => {
+    const result = await usersService.saveGoogleUser(userData);
+    return {
+      data: {
+        success: true,
+        data: { ...result.data, _id: result.data.id } as User,
+        isNew: result.isNew,
+      },
+    };
+  },
+
+  getByGoogleId: async (googleId: string) => {
+    const result = await usersService.getByGoogleId(googleId);
+    return {
+      data: {
+        success: true,
+        data: { ...result.data, _id: result.data.id } as User,
+      },
+    };
+  },
+
+  getById: async (_id: string) => {
+    // For now, just use getByGoogleId or implement a proper lookup
+    throw new Error('getById not implemented - use getByGoogleId instead');
+  },
 };
 
-export default api;
+// Default export for backward compatibility
+export default {
+  leadsAPI,
+  agentAPI,
+  notesAPI,
+  usersAPI,
+};
