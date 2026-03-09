@@ -3,6 +3,8 @@
  * into a human-readable label (e.g. "Car Wash").
  * Takes only the first segment if comma-separated.
  */
+
+//tone
 export function formatCategory(raw: string | undefined | null): string {
   if (!raw) return '—';
   return raw
