@@ -5,10 +5,11 @@
  * This allows the frontend to work independently without a backend server.
  */
 
-import { leadsService, notesService, usersService } from './firestore';
+import { leadsService, notesService, tasksService, usersService } from './firestore';
 import type {
   Lead as FirestoreLead,
   Note as FirestoreNote,
+  Task as FirestoreTask,
   LeadsStats as FirestoreLeadsStats,
   LeadsQueryParams as FirestoreLeadsQueryParams,
 } from './firestore';
@@ -75,8 +76,27 @@ export interface NoteAPI {
   mentioned_users?: string[];
 }
 
+export interface TaskAPI {
+  _id: string;
+  lead_ids: string[];
+  title: string;
+  description?: string;
+  due_date: string;
+  due_time?: string;
+  assigned_to?: string;
+  assigned_to_name?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high';
+  type: 'follow_up' | 'meeting' | 'call' | 'email' | 'other';
+  google_calendar_event_id?: string;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 // Alias for backward compatibility
 export type Note = NoteAPI;
+export type Task = TaskAPI;
 export type SocialProfile = SocialProfileAPI;
 
 export type LeadsStats = FirestoreLeadsStats;
@@ -133,6 +153,12 @@ const toFirestoreLead = (lead: Partial<Lead>): Partial<FirestoreLead> => {
 const toAPINote = (note: FirestoreNote): NoteAPI => ({
   ...note,
   _id: note.id,
+});
+
+// Helper to convert Firestore Task to API Task
+const toAPITask = (task: FirestoreTask): TaskAPI => ({
+  ...task,
+  _id: task.id,
 });
 
 // Leads API - Using Firestore
@@ -261,6 +287,57 @@ export const notesAPI = {
   },
 };
 
+// Tasks API - Using Firestore
+export const tasksAPI = {
+  getAll: async () => {
+    const result = await tasksService.getAll();
+    return {
+      data: {
+        success: true,
+        data: result.data.map(toAPITask),
+      },
+    };
+  },
+
+  getForLead: async (leadId: string) => {
+    const result = await tasksService.getForLead(leadId);
+    return {
+      data: {
+        success: true,
+        data: result.data.map(toAPITask),
+      },
+    };
+  },
+
+  create: async (data: Omit<TaskAPI, '_id'>) => {
+    const { ...rest } = data;
+    const firestoreData = rest as Omit<FirestoreTask, 'id'>;
+    const result = await tasksService.create(firestoreData);
+    return {
+      data: {
+        success: true,
+        data: toAPITask(result.data),
+      },
+    };
+  },
+
+  update: async (taskId: string, data: Partial<TaskAPI>) => {
+    const { _id, ...rest } = data;
+    const result = await tasksService.update(taskId, rest as Partial<FirestoreTask>);
+    return {
+      data: {
+        success: true,
+        data: toAPITask(result.data),
+      },
+    };
+  },
+
+  delete: async (taskId: string) => {
+    const result = await tasksService.delete(taskId);
+    return { data: result };
+  },
+};
+
 // Users API
 export interface User {
   _id: string;
@@ -327,5 +404,6 @@ export default {
   leadsAPI,
   agentAPI,
   notesAPI,
+  tasksAPI,
   usersAPI,
 };

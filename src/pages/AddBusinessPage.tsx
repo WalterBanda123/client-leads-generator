@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Loader2, Plus } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import { leadsAPI } from '../services/api';
 import type { Lead } from '../services/api';
 
@@ -70,7 +70,7 @@ export default function AddBusinessPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="space-y-5">
       {/* Back */}
       <button
         onClick={() => navigate('/')}
@@ -80,22 +80,14 @@ export default function AddBusinessPage() {
         Back to Dashboard
       </button>
 
-      {/* Header card */}
-      <div className="bg-white rounded-2xl overflow-hidden">
-        <div className="h-1 bg-dynaton-red w-full" />
-        <div className="flex items-center gap-4 px-6 py-5">
-          <div className="w-11 h-11 bg-dynaton-red/10 rounded-2xl flex items-center justify-center shrink-0">
-            <Building2 className="w-6 h-6 text-dynaton-red" />
-          </div>
-          <div>
-            <h1 className="font-display text-xl font-bold text-gray-900 tracking-tight">Add New Business</h1>
-            <p className="text-sm text-dynaton-muted font-mono mt-0.5">Manually add a lead to the database</p>
-          </div>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Add New Business</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Manually add a lead to the database</p>
       </div>
 
       {/* Form card */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 space-y-5">
         {/* Business Name */}
         <div>
           <label className="block text-[10px] font-semibold text-dynaton-muted uppercase tracking-widest mb-1.5">
@@ -132,7 +124,7 @@ export default function AddBusinessPage() {
         </div>
 
         {/* Phone + Email */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[10px] font-semibold text-dynaton-muted uppercase tracking-widest mb-1.5">
               Phone
@@ -192,14 +184,14 @@ export default function AddBusinessPage() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="px-4 py-2.5 text-sm font-semibold text-gray-600 bg-dynaton-gray rounded-lg hover:bg-gray-100 transition-colors"
+            className="px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-dynaton-red rounded-lg hover:bg-dynaton-red-dark disabled:opacity-60 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-[#CE0505] rounded-lg hover:bg-[#b00404] disabled:opacity-60 transition-colors"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

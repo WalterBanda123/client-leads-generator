@@ -3,6 +3,7 @@ import App from './App';
 import LeadsDashboard from './components/LeadsDashboard';
 import LeadDetailsPage from './pages/LeadDetailsPage';
 import AddBusinessPage from './pages/AddBusinessPage';
+import TasksPage from './pages/TasksPage';
 import LoginPage from './pages/LoginPage';
 import AuthActionPage from './pages/AuthActionPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
       {
         path: 'leads/new',
         element: <AddBusinessPage />,
+      },
+      {
+        path: 'tasks',
+        element: <TasksPage />,
       },
     ],
   },

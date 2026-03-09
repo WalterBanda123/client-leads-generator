@@ -31,25 +31,13 @@ export default function LocationMap({ lat, lng, businessName, address }: Locatio
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900">Location</h2>
-        <a
-          href={googleMapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-[#CE0505] hover:bg-[#B80404] rounded-lg transition-colors"
-        >
-          <Navigation className="w-4 h-4" />
-          Get Directions
-        </a>
-      </div>
-      <div className="h-[250px] relative">
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="h-[200px] relative">
         <MapContainer
           center={[lat, lng]}
           zoom={15}
           scrollWheelZoom={false}
-          className="h-full w-full rounded-b-lg"
+          className="h-full w-full"
           style={{ zIndex: 1 }}
         >
           <TileLayer
@@ -66,6 +54,21 @@ export default function LocationMap({ lat, lng, businessName, address }: Locatio
           </Marker>
           <MapUpdater lat={lat} lng={lng} />
         </MapContainer>
+      </div>
+      <div className="px-4 py-3 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Location</p>
+          {address && <p className="text-xs text-gray-600 mt-0.5 truncate max-w-[180px]">{address}</p>}
+        </div>
+        <a
+          href={googleMapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#CE0505] hover:bg-[#b00404] rounded-lg transition-colors"
+        >
+          <Navigation className="w-3.5 h-3.5" />
+          Directions
+        </a>
       </div>
     </div>
   );

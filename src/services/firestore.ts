@@ -92,6 +92,24 @@ export interface Note {
   mentioned_users?: string[];
 }
 
+export interface Task {
+  id: string;
+  lead_ids: string[];
+  title: string;
+  description?: string;
+  due_date: string; // ISO string
+  due_time?: string; // "HH:mm" format
+  assigned_to?: string; // user ID
+  assigned_to_name?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high';
+  type: 'follow_up' | 'meeting' | 'call' | 'email' | 'other';
+  google_calendar_event_id?: string;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface User {
   id: string;
   google_id: string;
@@ -126,6 +144,7 @@ const contactsCollection = collection(db, 'contacts');
 const socialProfilesCollection = collection(db, 'social_profiles');
 const enrichmentLogCollection = collection(db, 'enrichment_log');
 const notesCollection = collection(db, 'notes');
+const tasksCollection = collection(db, 'tasks');
 const usersCollection = collection(db, 'users');
 
 // Categories that are generic Google Places tags, not real business categories
@@ -407,6 +426,100 @@ export const notesService = {
 
   async delete(noteId: string) {
     const docRef = doc(notesCollection, noteId);
+    await deleteDoc(docRef);
+    return { success: true };
+  },
+};
+
+// Tasks Service
+export const tasksService = {
+  async getAll() {
+    const q = query(tasksCollection, orderBy('due_date', 'asc'));
+    const snapshot = await getDocs(q);
+    const tasks = snapshot.docs.map(d => ({
+      id: d.id,
+      ...d.data(),
+      created_at: d.data().created_at instanceof Timestamp
+        ? d.data().created_at.toDate().toISOString()
+        : d.data().created_at,
+      due_date: d.data().due_date instanceof Timestamp
+        ? d.data().due_date.toDate().toISOString()
+        : d.data().due_date,
+      updated_at: d.data().updated_at instanceof Timestamp
+        ? d.data().updated_at.toDate().toISOString()
+        : d.data().updated_at,
+    })) as Task[];
+    return { success: true, data: tasks };
+  },
+
+  async getForLead(leadId: string) {
+    const q = query(
+      tasksCollection,
+      where('lead_id', '==', leadId),
+      orderBy('due_date', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    const tasks = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      created_at: doc.data().created_at instanceof Timestamp
+        ? doc.data().created_at.toDate().toISOString()
+        : doc.data().created_at,
+      due_date: doc.data().due_date instanceof Timestamp
+        ? doc.data().due_date.toDate().toISOString()
+        : doc.data().due_date,
+      updated_at: doc.data().updated_at instanceof Timestamp
+        ? doc.data().updated_at.toDate().toISOString()
+        : doc.data().updated_at,
+    })) as Task[];
+
+    return { success: true, data: tasks };
+  },
+
+  async create(data: Omit<Task, 'id'>) {
+    // Firestore rejects `undefined` values — only include defined fields
+    const taskData: Record<string, unknown> = {
+      lead_ids: data.lead_ids || [],
+      title: data.title,
+      due_date: data.due_date,
+      status: data.status,
+      priority: data.priority,
+      type: data.type,
+      created_by: data.created_by,
+      created_at: new Date().toISOString(),
+    };
+    if (data.description !== undefined) taskData.description = data.description;
+    if (data.due_time !== undefined) taskData.due_time = data.due_time;
+    if (data.assigned_to !== undefined) taskData.assigned_to = data.assigned_to;
+    if (data.assigned_to_name !== undefined) taskData.assigned_to_name = data.assigned_to_name;
+    if (data.google_calendar_event_id !== undefined) taskData.google_calendar_event_id = data.google_calendar_event_id;
+
+    const docRef = await addDoc(tasksCollection, taskData);
+    return {
+      success: true,
+      data: { id: docRef.id, ...taskData } as Task,
+    };
+  },
+
+  async update(taskId: string, data: Partial<Task>) {
+    const docRef = doc(tasksCollection, taskId);
+    const updateData = {
+      ...data,
+      updated_at: new Date().toISOString(),
+    };
+    delete (updateData as { id?: string }).id; // Remove id from update data
+
+    await updateDoc(docRef, updateData);
+
+    const updatedDoc = await getDoc(docRef);
+    return {
+      success: true,
+      data: { id: updatedDoc.id, ...updatedDoc.data() } as Task,
+    };
+  },
+
+  async delete(taskId: string) {
+    const docRef = doc(tasksCollection, taskId);
     await deleteDoc(docRef);
     return { success: true };
   },
