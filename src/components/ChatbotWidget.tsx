@@ -114,7 +114,7 @@ export default function ChatbotWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[#CE0505] hover:bg-[#B80404] text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-50"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-dynaton-red hover:bg-dynaton-red-dark text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-50"
       >
         <MessageCircle className="w-6 h-6" />
       </button>
@@ -126,12 +126,12 @@ export default function ChatbotWidget() {
       <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setIsMinimized(false)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#CE0505] hover:bg-[#B80404] text-white rounded-full shadow-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-dynaton-red hover:bg-dynaton-red-dark text-white rounded-full shadow-lg transition-colors"
         >
           <MessageCircle className="w-5 h-5" />
           <span className="font-medium">Chat</span>
           {messages.length > 0 && (
-            <span className="bg-white text-[#CE0505] text-xs font-bold px-1.5 py-0.5 rounded-full">
+            <span className="bg-white text-dynaton-red text-xs font-bold px-1.5 py-0.5 rounded-full">
               {messages.length}
             </span>
           )}
@@ -141,11 +141,11 @@ export default function ChatbotWidget() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-lg shadow-2xl flex flex-col z-50 border border-gray-200 overflow-hidden">
+    <div className="fixed bottom-6 right-6 w-96 h-125 bg-white rounded-lg shadow-2xl flex flex-col z-50 border border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#CE0505] rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-dynaton-red rounded-full flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <span className="font-semibold text-gray-900">AI Assistant</span>
@@ -180,7 +180,7 @@ export default function ChatbotWidget() {
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
             <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">
-              <Sparkles className="w-6 h-6 text-[#CE0505]" />
+              <Sparkles className="w-6 h-6 text-dynaton-red" />
             </div>
             <h3 className="font-semibold text-gray-900 mb-1">How can I help?</h3>
             <p className="text-sm text-gray-500 mb-4">
@@ -209,7 +209,7 @@ export default function ChatbotWidget() {
                 <div
                   className={`max-w-[85%] rounded-lg px-3 py-2 ${
                     message.role === 'user'
-                      ? 'bg-[#CE0505] text-white'
+                      ? 'bg-dynaton-red text-white'
                       : 'bg-gray-100 text-gray-800'
                   }`}
                 >
@@ -260,7 +260,7 @@ export default function ChatbotWidget() {
               key={action.label}
               onClick={() => handleSendMessage(action.query)}
               disabled={loading}
-              className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors disabled:opacity-50"
+              className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors disabled:opacity-50"
             >
               {action.icon}
               {action.label}
@@ -280,12 +280,12 @@ export default function ChatbotWidget() {
             onKeyDown={handleKeyDown}
             placeholder="Ask about leads..."
             disabled={loading}
-            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CE0505]/20 focus:border-[#CE0505] disabled:opacity-50"
+            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-dynaton-red/20 focus:border-dynaton-red disabled:opacity-50"
           />
           <button
             onClick={() => handleSendMessage()}
             disabled={!input.trim() || loading}
-            className="p-2 bg-[#CE0505] hover:bg-[#B80404] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-dynaton-red hover:bg-dynaton-red-dark text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />
           </button>

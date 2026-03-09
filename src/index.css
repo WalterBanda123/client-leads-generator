@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-family-sans: 'Inter', system-ui, sans-serif;
+  --font-family-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-family-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-family-display: 'Plus Jakarta Sans', system-ui, sans-serif;
 
   /* Dynaton Brand Colors */
   --color-dynaton-red: #CE0505;
@@ -9,14 +11,58 @@
   --color-dynaton-red-light: #F10202;
   --color-dynaton-teal: #0CA684;
   --color-dynaton-teal-dark: #098A6E;
-  --color-dynaton-dark: #1F2125;
-  --color-dynaton-gray: #F7F7F7;
-  --color-dynaton-border: #D8D8D8;
+  --color-dynaton-dark: #0D0F14;
+  --color-dynaton-surface: #F9F9FB;
+  --color-dynaton-gray: #F4F4F6;
+  --color-dynaton-border: #E2E2E8;
+  --color-dynaton-muted: #8A8A9A;
 }
 
 /* Base styles */
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply bg-dynaton-gray text-gray-900 antialiased;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D0D0DC;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B0B0C0;
+}
+
+/* Smooth transitions globally */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus rings */
+:focus-visible {
+  outline: 2px solid #CE0505;
+  outline-offset: 2px;
+}
+
+/* Mono font utility */
+.font-mono {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+}
+
+/* Display font utility */
+.font-display {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
 /* Custom utility for line clamping */
@@ -25,6 +71,7 @@ body {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
 .line-clamp-2 {
@@ -32,4 +79,27 @@ body {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* Stat card shimmer on hover */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+.stat-card:hover::after {
+  transform: translateX(100%);
+}
+
+/* Table row hover bar — uses box-shadow inset (works on tr elements) */
+.leads-row:hover td:first-child {
+  box-shadow: inset 3px 0 0 #CE0505;
 }

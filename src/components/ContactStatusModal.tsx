@@ -14,20 +14,17 @@ interface ContactStatusModalProps {
 type ContactMethod = 'phone' | 'email' | 'in-person' | 'whatsapp' | 'other';
 
 const contactMethods: { value: ContactMethod; label: string; icon: React.ReactNode }[] = [
-  { value: 'phone', label: 'Phone', icon: <Phone className="w-4 h-4" /> },
-  { value: 'email', label: 'Email', icon: <Mail className="w-4 h-4" /> },
+  { value: 'phone',     label: 'Phone',     icon: <Phone className="w-4 h-4" /> },
+  { value: 'email',     label: 'Email',     icon: <Mail className="w-4 h-4" /> },
   { value: 'in-person', label: 'In Person', icon: <Users className="w-4 h-4" /> },
-  { value: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle className="w-4 h-4" /> },
-  { value: 'other', label: 'Other', icon: <MoreHorizontal className="w-4 h-4" /> },
+  { value: 'whatsapp',  label: 'WhatsApp',  icon: <MessageCircle className="w-4 h-4" /> },
+  { value: 'other',     label: 'Other',     icon: <MoreHorizontal className="w-4 h-4" /> },
 ];
 
 export default function ContactStatusModal({ isOpen, onClose, lead, onSuccess }: ContactStatusModalProps) {
   const { user } = useAuth();
   const [contactMethod, setContactMethod] = useState<ContactMethod>('phone');
-  const [contactDate, setContactDate] = useState(() => {
-    const now = new Date();
-    return now.toISOString().slice(0, 16);
-  });
+  const [contactDate, setContactDate] = useState(() => new Date().toISOString().slice(0, 16));
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,16 +44,12 @@ export default function ContactStatusModal({ isOpen, onClose, lead, onSuccess }:
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !loading) {
-        onClose();
-      }
+      if (e.key === 'Escape' && !loading) onClose();
     };
-
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
     }
-
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
@@ -66,38 +59,27 @@ export default function ContactStatusModal({ isOpen, onClose, lead, onSuccess }:
   if (!isOpen) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !loading) {
-      onClose();
-    }
+    if (e.target === e.currentTarget && !loading) onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (requiresNotes && notes.trim().length < 10) {
       setError('Please add notes about the contact (minimum 10 characters)');
       return;
     }
-
     try {
       setLoading(true);
       setError(null);
-
       const updateResponse = await leadsAPI.update(lead._id, { status: newStatus });
-      if (!updateResponse.data.success) {
-        throw new Error('Failed to update status');
-      }
-
-      // Try to save notes, but don't fail the whole operation if it doesn't work
+      if (!updateResponse.data.success) throw new Error('Failed to update status');
       if (requiresNotes && notes.trim() && user) {
         try {
           await notesAPI.create(lead._id, notes.trim(), user.firstName, contactMethod, contactDate);
         } catch (noteErr) {
-          // Notes endpoint may not exist yet - log but continue
           console.warn('Could not save notes:', noteErr);
         }
       }
-
       onSuccess(updateResponse.data.data);
       onClose();
     } catch (err) {
@@ -110,119 +92,126 @@ export default function ContactStatusModal({ isOpen, onClose, lead, onSuccess }:
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-dynaton-border">
+        {/* Accent bar */}
+        <div className={`h-1 w-full ${isContacted ? 'bg-orange-400' : 'bg-green-500'}`} />
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {isContacted ? 'Mark as Not Contacted' : 'Mark as Contacted'}
-          </h3>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-dynaton-border">
+          <div>
+            <h3 className="font-display text-base font-bold text-gray-900">
+              {isContacted ? 'Mark as Not Contacted' : 'Log Contact'}
+            </h3>
+            <p className="text-xs text-dynaton-muted mt-0.5 truncate max-w-75">{lead.business_name}</p>
+          </div>
           <button
             onClick={onClose}
             disabled={loading}
-            className="p-1 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-50"
+            className="p-1.5 rounded-lg hover:bg-dynaton-gray text-dynaton-muted disabled:opacity-50 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
-          <p className="text-gray-600">
-            {isContacted
-              ? `Are you sure you want to mark "${lead.business_name}" as not contacted?`
-              : `Record your contact with "${lead.business_name}"`}
-          </p>
-
-          {requiresNotes && (
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {!requiresNotes ? (
+            <p className="text-sm text-gray-600 leading-relaxed bg-orange-50 border border-orange-100 rounded-xl px-4 py-3">
+              This will reset <span className="font-semibold text-gray-800">{lead.business_name}</span> back to "Not Contacted" status.
+            </p>
+          ) : (
             <>
               {/* Contact Method */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Method
+                <label className="block text-xs font-semibold text-dynaton-muted uppercase tracking-widest mb-2">
+                  How did you reach out?
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-5 gap-1.5">
                   {contactMethods.map((method) => (
                     <button
                       key={method.value}
                       type="button"
                       onClick={() => setContactMethod(method.value)}
-                      className={`flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                      className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs rounded-xl border transition-colors ${
                         contactMethod === method.value
-                          ? 'border-[#CE0505] bg-red-50 text-[#CE0505]'
-                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? 'border-dynaton-red bg-dynaton-red/5 text-dynaton-red font-semibold'
+                          : 'border-dynaton-border text-dynaton-muted hover:bg-dynaton-gray hover:text-gray-700'
                       }`}
                     >
                       {method.icon}
-                      <span className="hidden sm:inline">{method.label}</span>
+                      <span>{method.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Contact Date/Time */}
+              {/* Contact Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Date & Time
+                <label className="block text-xs font-semibold text-dynaton-muted uppercase tracking-widest mb-2">
+                  Date & Time
                 </label>
                 <input
                   type="datetime-local"
                   value={contactDate}
                   onChange={(e) => setContactDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CE0505]/20 focus:border-[#CE0505]"
+                  className="w-full px-3 py-2 text-sm border border-dynaton-border rounded-xl bg-dynaton-gray focus:outline-none focus:ring-2 focus:ring-dynaton-red/20 focus:border-dynaton-red focus:bg-white"
                 />
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes <span className="text-[#CE0505]">*</span>
+                <label className="block text-xs font-semibold text-dynaton-muted uppercase tracking-widest mb-2">
+                  Notes <span className="text-dynaton-red">*</span>
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="What did you discuss? Any follow-up actions needed?"
                   rows={4}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CE0505]/20 focus:border-[#CE0505] resize-none"
+                  className="w-full px-3 py-2 text-sm border border-dynaton-border rounded-xl bg-dynaton-gray focus:outline-none focus:ring-2 focus:ring-dynaton-red/20 focus:border-dynaton-red focus:bg-white resize-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  {notes.length}/10 characters minimum
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-dynaton-muted">Minimum 10 characters</p>
+                  <p className={`text-xs font-mono font-medium ${notes.length >= 10 ? 'text-green-600' : 'text-dynaton-muted'}`}>
+                    {notes.length} chars
+                  </p>
+                </div>
               </div>
             </>
           )}
 
           {error && (
-            <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">
-              <AlertCircle className="w-4 h-4" />
+            <div className="flex items-center gap-2 text-dynaton-red text-sm bg-red-50 border border-red-100 px-3 py-2.5 rounded-xl">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
           )}
         </form>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-dynaton-gray border-t border-dynaton-border">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-dynaton-border rounded-xl hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || (requiresNotes && notes.trim().length < 10)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 disabled:opacity-50 ${
+            className={`px-4 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 disabled:opacity-50 transition-colors ${
               isContacted
                 ? 'bg-orange-500 hover:bg-orange-600 text-white'
                 : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isContacted ? 'Mark Not Contacted' : 'Mark Contacted'}
+            {isContacted ? 'Mark Not Contacted' : 'Save Contact'}
           </button>
         </div>
       </div>
