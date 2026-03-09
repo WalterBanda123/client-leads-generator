@@ -10,12 +10,12 @@ import type { TaskAPI, Lead } from '../services/api';
 type FilterStatus = 'active' | 'completed' | 'all';
 type FilterPriority = 'all' | 'high' | 'medium' | 'low';
 
-const TYPE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
-  meeting: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-  call: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  email: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-  follow_up: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  other: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200' },
+const TYPE_STYLES: Record<string, { bg: string; text: string }> = {
+  meeting: { bg: 'bg-purple-50', text: 'text-purple-600' },
+  call: { bg: 'bg-blue-50', text: 'text-blue-600' },
+  email: { bg: 'bg-teal-50', text: 'text-teal-600' },
+  follow_up: { bg: 'bg-amber-50', text: 'text-amber-600' },
+  other: { bg: 'bg-gray-50', text: 'text-gray-500' },
 };
 
 const PRIORITY_DOT: Record<string, string> = {
@@ -77,19 +77,19 @@ function LeadPicker({
 
   return (
     <div ref={ref} className="relative">
-      <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+      <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
         Linked Leads
       </label>
 
       {/* Selected pills */}
       <div
-        className="min-h-[42px] w-full px-2.5 py-1.5 border border-gray-200 rounded-lg bg-white flex flex-wrap gap-1.5 items-center cursor-text"
+        className="min-h-[38px] w-full px-2.5 py-1.5 border border-gray-200 rounded-md bg-white flex flex-wrap gap-1.5 items-center cursor-text"
         onClick={() => setOpen(true)}
       >
         {selectedLeads.map(l => (
           <span
             key={l._id}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full"
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-md"
           >
             {l.business_name}
             <button
@@ -108,7 +108,7 @@ function LeadPicker({
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white rounded-md border border-gray-200 overflow-hidden">
           <div className="p-2 border-b border-gray-100">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -118,7 +118,7 @@ function LeadPicker({
                 onChange={e => setQ(e.target.value)}
                 placeholder="Search leads..."
                 autoFocus
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:border-gray-400"
               />
             </div>
           </div>
@@ -131,9 +131,9 @@ function LeadPicker({
                   key={l._id}
                   type="button"
                   onClick={() => { toggle(l._id); setQ(''); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 text-left transition-colors"
                 >
-                  <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
+                  <div className="w-5 h-5 rounded bg-gray-100 flex items-center justify-center text-[9px] font-bold text-gray-500 shrink-0">
                     {l.business_name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -269,52 +269,52 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Tasks</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {activeCount} active{overdueCount > 0 && <span className="text-red-500 font-semibold"> &middot; {overdueCount} overdue</span>}
+          <h1 className="text-lg font-semibold text-gray-900">Tasks</h1>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {activeCount} active{overdueCount > 0 && <span className="text-red-500 font-medium"> · {overdueCount} overdue</span>}
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#CE0505] rounded-lg hover:bg-[#b00404] transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-[#CE0505] rounded-md hover:bg-[#b00404] transition-colors"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
           New Task
         </button>
       </div>
 
       {/* Create form */}
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
-          <p className="text-sm font-semibold text-gray-900 mb-4">Create a new task</p>
-          <div className="space-y-3">
+        <div className="bg-white rounded-md border border-gray-200 p-4">
+          <p className="text-xs font-semibold text-gray-900 mb-3">Create a new task</p>
+          <div className="space-y-2.5">
             <input
               type="text"
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               placeholder="Task title *"
               autoFocus
-              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-400 transition-colors"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400 transition-colors"
             />
             <textarea
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               placeholder="Description (optional)"
               rows={2}
-              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-400 resize-none transition-colors"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400 resize-none transition-colors"
             />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div>
                 <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Due Date *</label>
                 <input
                   type="date"
                   value={form.due_date}
                   onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-400"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400"
                 />
               </div>
               <div>
@@ -323,7 +323,7 @@ export default function TasksPage() {
                   type="time"
                   value={form.due_time}
                   onChange={e => setForm(f => ({ ...f, due_time: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-400"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400"
                 />
               </div>
               <div>
@@ -331,7 +331,7 @@ export default function TasksPage() {
                 <select
                   value={form.type}
                   onChange={e => setForm(f => ({ ...f, type: e.target.value as TaskAPI['type'] }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-400 appearance-none"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400 appearance-none"
                 >
                   <option value="follow_up">Follow Up</option>
                   <option value="meeting">Meeting</option>
@@ -345,7 +345,7 @@ export default function TasksPage() {
                 <select
                   value={form.priority}
                   onChange={e => setForm(f => ({ ...f, priority: e.target.value as TaskAPI['priority'] }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-400 appearance-none"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400 appearance-none"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -364,16 +364,16 @@ export default function TasksPage() {
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 onClick={() => { setShowForm(false); resetForm(); }}
-                className="px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg"
+                className="px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-md"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreate}
                 disabled={saving || !form.title.trim() || !form.due_date}
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-[#CE0505] rounded-lg hover:bg-[#b00404] disabled:opacity-40 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-[#CE0505] rounded-md hover:bg-[#b00404] disabled:opacity-40 transition-colors"
               >
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                 Create Task
               </button>
             </div>
@@ -382,37 +382,37 @@ export default function TasksPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-3 flex-wrap">
+      <div className="bg-white rounded-md border border-gray-200 px-3 py-2.5 flex items-center gap-2.5 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search tasks or leads..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:border-gray-400"
           />
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+        <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
           {(['active', 'completed', 'all'] as FilterStatus[]).map(s => (
             <button
               key={s}
               onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors capitalize ${
-                filterStatus === s ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors capitalize ${
+                filterStatus === s ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {s}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+        <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
           {(['all', 'high', 'medium', 'low'] as FilterPriority[]).map(p => (
             <button
               key={p}
               onClick={() => setFilterPriority(p)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors capitalize ${
-                filterPriority === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors capitalize ${
+                filterPriority === p ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {p}
@@ -423,17 +423,15 @@ export default function TasksPage() {
 
       {/* Task cards grid */}
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-          <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
-            <ListTodo className="w-6 h-6 text-gray-300" />
-          </div>
-          <p className="text-sm font-medium text-gray-400">No tasks found</p>
+        <div className="bg-white rounded-md border border-gray-200 p-10 text-center">
+          <ListTodo className="w-5 h-5 text-gray-300 mx-auto mb-2" />
+          <p className="text-sm text-gray-400">No tasks found</p>
           <p className="text-xs text-gray-300 mt-0.5">
             {tasks.length === 0 ? 'Create your first task to get started' : 'Try adjusting your filters'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(task => {
             const isOverdue = task.status !== 'completed' &&
               new Date(task.due_date) < new Date(new Date().toDateString());
@@ -444,14 +442,14 @@ export default function TasksPage() {
             return (
               <div
                 key={task._id}
-                className={`bg-white rounded-xl shadow-sm border flex flex-col transition-all hover:shadow-md ${
+                className={`bg-white rounded-md border flex flex-col transition-colors group ${
                   isOverdue ? 'border-red-200' :
-                  isCompleted ? 'border-gray-100 opacity-70' :
-                  'border-gray-100'
+                  isCompleted ? 'border-gray-100 opacity-60' :
+                  'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 {/* Card top color stripe */}
-                <div className={`h-1.5 rounded-t-xl ${
+                <div className={`h-1 rounded-t-md ${
                   isOverdue ? 'bg-red-500' :
                   isCompleted ? 'bg-emerald-400' :
                   task.priority === 'high' ? 'bg-red-400' :
@@ -459,27 +457,27 @@ export default function TasksPage() {
                   'bg-gray-200'
                 }`} />
 
-                <div className="p-4 flex-1 flex flex-col">
+                <div className="p-3.5 flex-1 flex flex-col">
                   {/* Header: type badge + actions */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-wide ${style.bg} ${style.text}`}>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className={`px-2 py-0.5 text-[9px] font-semibold rounded uppercase tracking-wide ${style.bg} ${style.text}`}>
                       {task.type.replace('_', ' ')}
                     </span>
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       {!isCompleted && (
                         <a
                           href={buildGoogleCalendarUrl(task, taskLeads.map(l => l.business_name))}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Add to Google Calendar"
-                          className="p-1.5 text-gray-400 hover:text-[#CE0505] hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1 text-gray-400 hover:text-[#CE0505] rounded transition-colors"
                         >
                           <CalendarPlus className="w-3.5 h-3.5" />
                         </a>
                       )}
                       <button
                         onClick={() => handleDelete(task._id)}
-                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1 text-gray-300 hover:text-red-500 rounded transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -487,7 +485,7 @@ export default function TasksPage() {
                   </div>
 
                   {/* Title + description */}
-                  <h3 className={`text-sm font-bold leading-snug ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                  <h3 className={`text-sm font-semibold leading-snug ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                     {task.title}
                   </h3>
                   {task.description && !isCompleted && (
@@ -496,14 +494,14 @@ export default function TasksPage() {
 
                   {/* Linked leads */}
                   {taskLeads.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-3">
+                    <div className="flex flex-wrap gap-1 mt-2.5">
                       {taskLeads.map(l => (
                         <button
                           key={l._id}
                           onClick={() => navigate(`/leads/${l._id}`)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors truncate max-w-[140px]"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-gray-50 text-gray-500 rounded hover:bg-gray-100 transition-colors truncate max-w-[130px]"
                         >
-                          <span className="w-3.5 h-3.5 rounded-full bg-gray-300 flex items-center justify-center text-[8px] font-bold text-white shrink-0">
+                          <span className="w-3 h-3 rounded bg-gray-200 flex items-center justify-center text-[7px] font-bold text-gray-500 shrink-0">
                             {l.business_name.charAt(0)}
                           </span>
                           {l.business_name}
@@ -516,49 +514,48 @@ export default function TasksPage() {
                   <div className="flex-1" />
 
                   {/* Meta row */}
-                  <div className="flex items-center gap-2 mt-4 flex-wrap">
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
                     <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${
-                      isOverdue ? 'text-red-600' : 'text-gray-500'
+                      isOverdue ? 'text-red-500' : 'text-gray-400'
                     }`}>
                       <Calendar className="w-3 h-3" />
                       {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                     {task.due_time && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 font-medium">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
                         <Clock className="w-3 h-3" />
                         {task.due_time}
                       </span>
                     )}
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 uppercase">
-                      <span className={`w-2 h-2 rounded-full ${PRIORITY_DOT[task.priority]}`} />
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-gray-400 uppercase">
+                      <span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_DOT[task.priority]}`} />
                       {task.priority}
                     </span>
                     {isOverdue && (
-                      <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">Overdue</span>
+                      <span className="text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Overdue</span>
                     )}
                   </div>
                 </div>
 
                 {/* Bottom: radio toggle */}
-                <div className={`px-4 py-3 border-t flex items-center gap-3 ${
+                <div className={`px-3.5 py-2.5 border-t flex items-center ${
                   isCompleted ? 'border-gray-100 bg-gray-50' : 'border-gray-100'
                 }`}>
                   <button
                     onClick={() => handleToggle(task)}
-                    className="flex items-center gap-2.5 group w-full"
+                    className="flex items-center gap-2 group/radio w-full"
                   >
-                    {/* Radio button */}
-                    <span className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                    <span className={`w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center shrink-0 transition-all ${
                       isCompleted
                         ? 'border-emerald-500 bg-emerald-500'
-                        : 'border-gray-300 group-hover:border-[#CE0505]'
+                        : 'border-gray-300 group-hover/radio:border-[#CE0505]'
                     }`}>
                       {isCompleted && (
-                        <span className="w-2 h-2 rounded-full bg-white" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
                       )}
                     </span>
-                    <span className={`text-xs font-semibold ${
-                      isCompleted ? 'text-emerald-600' : 'text-gray-500 group-hover:text-gray-700'
+                    <span className={`text-xs font-medium ${
+                      isCompleted ? 'text-emerald-600' : 'text-gray-400 group-hover/radio:text-gray-700'
                     }`}>
                       {isCompleted ? 'Completed' : 'Mark as done'}
                     </span>

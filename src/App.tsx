@@ -13,42 +13,42 @@ import {
 function SignOutDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={onCancel}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden"
+        className="bg-white rounded-md w-full max-w-sm mx-4 overflow-hidden border border-gray-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4 text-[#CE0505]" />
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-red-50 rounded-md flex items-center justify-center">
+              <AlertTriangle className="w-3.5 h-3.5 text-[#CE0505]" />
             </div>
-            <h3 className="font-semibold text-gray-900">Sign out</h3>
+            <h3 className="font-semibold text-sm text-gray-900">Sign out</h3>
           </div>
           <button
             onClick={onCancel}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
+            className="p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="px-6 py-5">
+        <div className="px-5 py-4">
           <p className="text-sm text-gray-500 leading-relaxed">
             Are you sure you want to sign out? You'll need to sign in again to access the dashboard.
           </p>
         </div>
-        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 bg-gray-50 border-t border-gray-100">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
           >
             Stay signed in
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 text-sm font-bold text-white bg-[#CE0505] hover:bg-[#b00404] rounded-xl transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-[#CE0505] hover:bg-[#b00404] rounded-md transition-colors"
           >
             Sign out
           </button>
@@ -73,15 +73,12 @@ function NavItem({ to, icon, label, exact }: NavItemProps) {
   return (
     <button
       onClick={() => navigate(to)}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative group ${
+      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
         isActive
           ? 'bg-[#CE0505]/8 text-[#CE0505]'
           : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
       }`}
     >
-      {isActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#CE0505] rounded-r-full" />
-      )}
       <span className={`shrink-0 ${isActive ? 'text-[#CE0505]' : 'text-gray-400 group-hover:text-gray-600'}`}>
         {icon}
       </span>
@@ -106,31 +103,26 @@ function App() {
   return (
     <div className="flex min-h-screen bg-[#F7F8FA]">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-[240px] flex flex-col z-40 bg-white border-r border-gray-200">
+      <aside className="fixed left-0 top-0 bottom-0 w-[220px] flex flex-col z-40 bg-white border-r border-gray-200">
         {/* Logo area */}
-        <div className="px-5 pt-6 pb-5 border-b border-gray-100">
-          <Link to="/" className="flex items-center gap-3 mb-3">
+        <div className="px-4 pt-5 pb-4 border-b border-gray-100">
+          <Link to="/" className="flex items-center gap-3 mb-2">
             <img
               src="/dynaton-logo.png"
               alt="Dynaton Data"
-              className="h-7 w-auto"
+              className="h-6 w-auto"
             />
           </Link>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-[#CE0505]/10 text-[#CE0505]">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold tracking-widest uppercase bg-[#CE0505]/8 text-[#CE0505]">
             Leads Platform
           </span>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">
-            Main Menu
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+          <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest px-3 mb-1.5">
+            Menu
           </p>
-          <NavItem
-            to="/leads/new"
-            icon={<Plus className="w-4 h-4" />}
-            label="Add Business"
-          />
           <NavItem
             to="/"
             icon={<LayoutDashboard className="w-4 h-4" />}
@@ -142,31 +134,36 @@ function App() {
             icon={<ListTodo className="w-4 h-4" />}
             label="Tasks"
           />
+          <NavItem
+            to="/leads/new"
+            icon={<Plus className="w-4 h-4" />}
+            label="Add Business"
+          />
         </nav>
 
         {/* User footer */}
         {user && (
-          <div className="px-3 py-4 border-t border-gray-100">
-            <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-gray-50 mb-2">
+          <div className="px-3 py-3 border-t border-gray-100">
+            <div className="flex items-center gap-2.5 px-2 py-2 rounded-md bg-gray-50 mb-1.5">
               {user.picture ? (
                 <img
                   src={user.picture}
                   alt={user.name}
-                  className="w-8 h-8 rounded-full shrink-0 ring-2 ring-gray-200"
+                  className="w-7 h-7 rounded-full shrink-0 border border-gray-200"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[#CE0505]/10 flex items-center justify-center text-[#CE0505] text-xs font-bold shrink-0">
+                <div className="w-7 h-7 rounded-full bg-[#CE0505]/8 flex items-center justify-center text-[#CE0505] text-[10px] font-bold shrink-0">
                   {initials}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-800 truncate">{user.name}</p>
+                <p className="text-xs font-medium text-gray-800 truncate">{user.name}</p>
                 <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
               </div>
             </div>
             <button
               onClick={() => setShowSignOutDialog(true)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
             >
               <LogOut className="w-3.5 h-3.5 shrink-0" />
               Sign out
@@ -176,7 +173,7 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="ml-[240px] flex-1 min-h-screen bg-[#F7F8FA]">
+      <main className="ml-[220px] flex-1 min-h-screen bg-[#F7F8FA]">
         <div className="max-w-[1400px] mx-auto px-6 py-6">
           <Outlet />
         </div>

@@ -31,8 +31,8 @@ export default function LocationMap({ lat, lng, businessName, address }: Locatio
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      <div className="h-[200px] relative">
+    <div>
+      <div className="h-[280px] relative">
         <MapContainer
           center={[lat, lng]}
           zoom={15}
@@ -55,16 +55,16 @@ export default function LocationMap({ lat, lng, businessName, address }: Locatio
           <MapUpdater lat={lat} lng={lng} />
         </MapContainer>
       </div>
-      <div className="px-4 py-3 flex items-center justify-between">
+      <div className="px-4 py-3 flex items-center justify-between border-t border-gray-100">
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Location</p>
-          {address && <p className="text-xs text-gray-600 mt-0.5 truncate max-w-[180px]">{address}</p>}
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Location</p>
+          {address && <p className="text-xs text-gray-600 mt-0.5 truncate max-w-[300px]">{address}</p>}
         </div>
         <a
           href={googleMapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#CE0505] hover:bg-[#b00404] rounded-lg transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#CE0505] hover:bg-[#b00404] rounded-md transition-colors"
         >
           <Navigation className="w-3.5 h-3.5" />
           Directions
