@@ -40,6 +40,7 @@ export interface Lead {
   socialProfiles?: SocialProfileAPI[];
   advertisingAnalysis?: AdvertisingAnalysis;
   notes?: NoteAPI[];
+  custom_tags?: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -71,6 +72,7 @@ export interface NoteAPI {
   created_by: string;
   created_at: string;
   updated_at?: string;
+  mentioned_users?: string[];
 }
 
 // Alias for backward compatibility
@@ -171,6 +173,17 @@ export const leadsAPI = {
     };
   },
 
+  create: async (data: Omit<Lead, '_id'>) => {
+    const firestoreData = toFirestoreLead(data) as Parameters<typeof leadsService.create>[0];
+    const result = await leadsService.create(firestoreData);
+    return {
+      data: {
+        success: true,
+        data: toAPILead(result.data),
+      },
+    };
+  },
+
   delete: async (id: string) => {
     const result = await leadsService.delete(id);
     return { data: result };
@@ -220,9 +233,10 @@ export const notesAPI = {
     content: string,
     createdBy: string,
     contactMethod?: string,
-    contactDate?: string
+    contactDate?: string,
+    mentionedUsers?: string[]
   ) => {
-    const result = await notesService.create(leadId, content, createdBy, contactMethod, contactDate);
+    const result = await notesService.create(leadId, content, createdBy, contactMethod, contactDate, mentionedUsers);
     return {
       data: {
         success: true,
@@ -231,8 +245,8 @@ export const notesAPI = {
     };
   },
 
-  update: async (noteId: string, content: string) => {
-    const result = await notesService.update(noteId, content);
+  update: async (noteId: string, content: string, mentionedUsers?: string[]) => {
+    const result = await notesService.update(noteId, content, mentionedUsers);
     return {
       data: {
         success: true,
@@ -271,6 +285,16 @@ export interface GoogleAuthPayload {
 }
 
 export const usersAPI = {
+  getAll: async () => {
+    const result = await usersService.getAll();
+    return {
+      data: {
+        success: true,
+        data: result.data.map(u => ({ ...u, _id: u.id })) as User[],
+      },
+    };
+  },
+
   saveGoogleUser: async (userData: GoogleAuthPayload) => {
     const result = await usersService.saveGoogleUser(userData);
     return {

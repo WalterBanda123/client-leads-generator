@@ -4,13 +4,15 @@ import {
   Search, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Phone, Mail, Globe, ExternalLink, UserCheck, UserX, Eye,
   PhoneCall, PhoneOff, ChevronDown, Filter, MoreVertical, Trash2,
-  Users, CheckCircle2, CircleDashed,
+  Users, CheckCircle2, CircleDashed, Plus, Download, Tag,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { leadsAPI } from '../services/api';
 import type { Lead, LeadsStats } from '../services/api';
 import { formatCategory } from '../utils/formatters';
 import ContactStatusModal from './ContactStatusModal';
 import ConfirmModal from './ConfirmModal';
+import ManageTagsModal from './ManageTagsModal';
 
 type StatusFilter = 'all' | 'not_contacted' | 'contacted';
 
@@ -55,12 +57,20 @@ export default function LeadsDashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const [showTagsModal, setShowTagsModal] = useState(false);
+
+  const EXCLUDED_CATEGORIES = new Set([
+    'point_of_interest', 'point of interest', 'establishment',
+  ]);
+
   const categories = useMemo(() => {
     const categorySet = new Set<string>();
     allLeadsForCategories.forEach(lead => {
       if (lead.category) {
         const mainCategory = lead.category.split(',')[0].trim();
-        categorySet.add(mainCategory);
+        if (!EXCLUDED_CATEGORIES.has(mainCategory.toLowerCase())) {
+          categorySet.add(mainCategory);
+        }
       }
     });
     return Array.from(categorySet).sort();
@@ -254,6 +264,63 @@ export default function LeadsDashboard() {
     return lead.status === 'contacted' || lead.status === 'qualified' || lead.status === 'converted';
   };
 
+  const handleTagsClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowTagsModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleTagsSuccess = (updated: Lead) => {
+    setAllLeadsForCategories(prev => prev.map(l => l._id === updated._id ? updated : l));
+  };
+
+  const handleExportExcel = () => {
+    // Apply current filters to allLeadsForCategories
+    let filtered = [...allLeadsForCategories];
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(lead => {
+        if (!lead.category) return false;
+        return lead.category.split(',')[0].trim().toLowerCase() === categoryFilter.toLowerCase();
+      });
+    }
+    if (statusFilter === 'contacted') {
+      filtered = filtered.filter(lead =>
+        lead.status === 'contacted' || lead.status === 'qualified' || lead.status === 'converted'
+      );
+    } else if (statusFilter === 'not_contacted') {
+      filtered = filtered.filter(lead => lead.status === 'new' || !lead.status);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter(lead => lead.business_name.toLowerCase().includes(q));
+    }
+
+    const rows = filtered.map(lead => ({
+      'Business Name': lead.business_name,
+      'Category': lead.category ? formatCategory(lead.category) : '',
+      'Status': lead.status || 'new',
+      'Phone': lead.phone || '',
+      'Email': lead.email || '',
+      'Website': lead.website || '',
+      'Address': lead.address || '',
+      'Rating': lead.rating ?? '',
+      'System Tags': [
+        lead.is_small_business ? 'Small Business' : '',
+        lead.is_informal_business ? 'Informal' : '',
+        lead.has_website === false ? 'No Website' : '',
+        lead.social_media_only ? 'Social Only' : '',
+        lead.has_website ? 'Has Website' : '',
+      ].filter(Boolean).join(', '),
+      'Custom Tags': (lead.custom_tags || []).join(', '),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `leads-export-${date}.xlsx`);
+  };
+
   const contactedPct = stats.all > 0 ? Math.round((stats.contacted / stats.all) * 100) : 0;
 
   return (
@@ -266,6 +333,13 @@ export default function LeadsDashboard() {
             {loading ? '—' : total.toLocaleString()} records
           </p>
         </div>
+        <button
+          onClick={() => navigate('/leads/new')}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-dynaton-red rounded-lg hover:bg-dynaton-red-dark transition-colors shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          Add Business
+        </button>
       </div>
 
       {/* Stat Cards */}
@@ -422,6 +496,17 @@ export default function LeadsDashboard() {
               Search
             </button>
           </form>
+
+          {/* Download Excel */}
+          <button
+            onClick={handleExportExcel}
+            disabled={loading || allLeadsForCategories.length === 0}
+            className="px-3 py-2 text-sm font-medium text-dynaton-teal bg-dynaton-gray border border-dynaton-border rounded-lg hover:bg-teal-50 hover:border-teal-200 transition-colors flex items-center gap-2 disabled:opacity-50"
+            title="Download as Excel"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:block">Excel</span>
+          </button>
 
           {/* Refresh */}
           <button
@@ -589,6 +674,13 @@ export default function LeadsDashboard() {
                                   </>
                                 )}
                               </button>
+                                  <button
+                                onClick={() => handleTagsClick(lead)}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-dynaton-gray flex items-center gap-2.5"
+                              >
+                                <Tag className="w-4 h-4 text-dynaton-red" />
+                                Manage Tags
+                              </button>
                               <div className="my-1 border-t border-dynaton-border" />
                               <button
                                 onClick={() => handleDeleteClick(lead)}
@@ -660,6 +752,14 @@ export default function LeadsDashboard() {
           </div>
         )}
       </div>
+
+      {/* Manage Tags Modal */}
+      <ManageTagsModal
+        isOpen={showTagsModal}
+        lead={selectedLead}
+        onClose={() => { setShowTagsModal(false); setSelectedLead(null); }}
+        onSuccess={handleTagsSuccess}
+      />
 
       {/* Contact Status Modal */}
       {selectedLead && (

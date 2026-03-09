@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -24,9 +24,12 @@ import {
   Tag,
   TrendingUp,
   AlertCircle,
+  Plus,
+  Send,
+  AtSign,
 } from 'lucide-react';
-import { leadsAPI, notesAPI } from '../services/api';
-import type { Lead, Note, LeadDetailsResponse, SocialProfile } from '../services/api';
+import { leadsAPI, notesAPI, usersAPI } from '../services/api';
+import type { Lead, Note, LeadDetailsResponse, SocialProfile, User as UserType } from '../services/api';
 import { formatCategory } from '../utils/formatters';
 import ContactStatusModal from '../components/ContactStatusModal';
 import LocationMap from '../components/LocationMap';
@@ -47,6 +50,23 @@ export default function LeadDetailsPage() {
   const [saving, setSaving] = useState(false);
 
   const [showStatusModal, setShowStatusModal] = useState(false);
+
+  // Custom tags
+  const [addingTag, setAddingTag] = useState(false);
+  const [newTagValue, setNewTagValue] = useState('');
+  const [savingTag, setSavingTag] = useState(false);
+
+  // Inline note form
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [showNoteForm, setShowNoteForm] = useState(false);
+
+  // @mention state
+  const [allUsers, setAllUsers] = useState<UserType[]>([]);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const mentionDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -119,6 +139,89 @@ export default function LeadDetailsPage() {
   const handleStatusUpdate = (updatedLead: Lead) => {
     setLead(updatedLead);
     fetchNotes();
+  };
+
+  // Custom tags handlers
+  const handleAddTag = async () => {
+    if (!lead || !newTagValue.trim()) return;
+    const tag = newTagValue.trim();
+    const existing = lead.custom_tags || [];
+    if (existing.includes(tag)) { setNewTagValue(''); setAddingTag(false); return; }
+    try {
+      setSavingTag(true);
+      const updated = [...existing, tag];
+      const res = await leadsAPI.update(lead._id, { custom_tags: updated });
+      if (res.data.success) setLead(res.data.data);
+    } catch (err) { console.error('Failed to add tag:', err); }
+    finally { setSavingTag(false); setNewTagValue(''); setAddingTag(false); }
+  };
+
+  const handleRemoveTag = async (tag: string) => {
+    if (!lead) return;
+    try {
+      const updated = (lead.custom_tags || []).filter(t => t !== tag);
+      const res = await leadsAPI.update(lead._id, { custom_tags: updated });
+      if (res.data.success) setLead(res.data.data);
+    } catch (err) { console.error('Failed to remove tag:', err); }
+  };
+
+  // Note handlers
+  const fetchUsers = async () => {
+    if (allUsers.length > 0) return;
+    try {
+      const res = await usersAPI.getAll();
+      if (res.data.success) setAllUsers(res.data.data);
+    } catch (err) { console.error('Failed to fetch users:', err); }
+  };
+
+  const handleNoteTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setNoteText(val);
+    const cursor = e.target.selectionStart;
+    const textUpToCursor = val.slice(0, cursor);
+    const match = textUpToCursor.match(/@(\w*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+      fetchUsers();
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const filteredMentionUsers = mentionQuery !== null
+    ? allUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+    : [];
+
+  const handleSelectMention = (user: UserType) => {
+    const cursor = noteTextareaRef.current?.selectionStart ?? noteText.length;
+    const before = noteText.slice(0, cursor).replace(/@\w*$/, `@${user.name} `);
+    const after = noteText.slice(cursor);
+    setNoteText(before + after);
+    setMentionedUserIds(prev => prev.includes(user._id) ? prev : [...prev, user._id]);
+    setMentionQuery(null);
+    noteTextareaRef.current?.focus();
+  };
+
+  const handleSubmitNote = async () => {
+    if (!lead || !noteText.trim()) return;
+    try {
+      setSavingNote(true);
+      await notesAPI.create(lead._id, noteText.trim(), 'Team', undefined, undefined, mentionedUserIds);
+      setNoteText('');
+      setMentionedUserIds([]);
+      setShowNoteForm(false);
+      fetchNotes();
+    } catch (err) { console.error('Failed to save note:', err); }
+    finally { setSavingNote(false); }
+  };
+
+  const renderNoteContent = (content: string) => {
+    const parts = content.split(/(@\w[\w\s]*)/g);
+    return parts.map((part, i) =>
+      part.startsWith('@')
+        ? <span key={i} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-dynaton-red/10 text-dynaton-red text-xs font-semibold font-mono">{part}</span>
+        : <span key={i}>{part}</span>
+    );
   };
 
   const isContacted = lead?.status === 'contacted' || lead?.status === 'qualified' || lead?.status === 'converted';
@@ -368,24 +471,96 @@ export default function LeadDetailsPage() {
             </div>
           )}
 
-          {/* Contact History */}
-          <div className="bg-white rounded-2xl border border-dynaton-border overflow-hidden">
+          {/* Contact History & Notes */}
+          <div className="bg-white rounded-2xl border border-dynaton-border">
             <div className="px-6 py-4 border-b border-dynaton-border flex items-center justify-between">
-              <h2 className="font-display font-bold text-gray-900">Contact History</h2>
-              {notes.length > 0 && (
-                <span className="text-xs font-mono text-dynaton-muted bg-dynaton-gray border border-dynaton-border px-2.5 py-1 rounded-full">
-                  {notes.length} {notes.length === 1 ? 'entry' : 'entries'}
-                </span>
-              )}
+              <h2 className="font-display font-bold text-gray-900">Notes & Contact History</h2>
+              <div className="flex items-center gap-2">
+                {notes.length > 0 && (
+                  <span className="text-xs font-mono text-dynaton-muted bg-dynaton-gray border border-dynaton-border px-2.5 py-1 rounded-full">
+                    {notes.length} {notes.length === 1 ? 'entry' : 'entries'}
+                  </span>
+                )}
+                {!showNoteForm && (
+                  <button
+                    onClick={() => setShowNoteForm(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-dynaton-red bg-dynaton-red/5 border border-dynaton-red/20 hover:bg-dynaton-red hover:text-white rounded-lg transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Note
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="p-6">
-              {notes.length === 0 ? (
+            <div className="p-6 space-y-4">
+              {/* Inline note form */}
+              {showNoteForm && (
+                <div className="bg-dynaton-gray rounded-xl p-4">
+                  <p className="text-[10px] font-semibold text-dynaton-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <AtSign className="w-3 h-3" />
+                    New Note — type @ to mention a team member
+                  </p>
+                  <div className="relative">
+                    <textarea
+                      ref={noteTextareaRef}
+                      value={noteText}
+                      onChange={handleNoteTextChange}
+                      placeholder="Write a note about this lead... type @name to mention someone"
+                      rows={3}
+                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-300 resize-none"
+                    />
+                    {/* @mention dropdown */}
+                    {mentionQuery !== null && filteredMentionUsers.length > 0 && (
+                      <div
+                        ref={mentionDropdownRef}
+                        className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg z-20 overflow-hidden"
+                      >
+                        {filteredMentionUsers.slice(0, 6).map(user => (
+                          <button
+                            key={user._id}
+                            type="button"
+                            onMouseDown={e => { e.preventDefault(); handleSelectMention(user); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-dynaton-gray text-left transition-colors"
+                          >
+                            <div className="w-7 h-7 rounded-full bg-dynaton-red/10 flex items-center justify-center shrink-0">
+                              <User className="w-3.5 h-3.5 text-dynaton-red" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                              <p className="text-xs text-dynaton-muted font-mono">{user.email}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-end gap-2 mt-3">
+                    <button
+                      onClick={() => { setShowNoteForm(false); setNoteText(''); setMentionQuery(null); setMentionedUserIds([]); }}
+                      className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-dynaton-border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSubmitNote}
+                      disabled={savingNote || !noteText.trim()}
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-dynaton-red rounded-lg hover:bg-dynaton-red-dark disabled:opacity-50 transition-colors"
+                    >
+                      {savingNote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      {savingNote ? 'Saving...' : 'Save Note'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes list */}
+              {notes.length === 0 && !showNoteForm ? (
                 <div className="text-center py-10">
                   <div className="w-12 h-12 bg-dynaton-gray rounded-2xl flex items-center justify-center mx-auto mb-3 border border-dynaton-border">
                     <Clock className="w-6 h-6 text-dynaton-muted" />
                   </div>
-                  <p className="text-sm text-dynaton-muted font-medium">No contact history yet</p>
-                  <p className="text-xs text-gray-300 mt-1">Click "Mark Contacted" above to add your first entry</p>
+                  <p className="text-sm text-dynaton-muted font-medium">No notes yet</p>
+                  <p className="text-xs text-gray-300 mt-1">Click "Add Note" to write one, or use "Mark Contacted" to log an interaction</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -399,7 +574,7 @@ export default function LeadDetailsPage() {
                         {getContactMethodIcon(note.contact_method)}
                       </div>
                       {/* Card */}
-                      <div className="bg-dynaton-gray border border-dynaton-border rounded-xl p-4 ml-2">
+                      <div className="bg-dynaton-gray rounded-xl p-4 ml-2">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
                           <span className="text-xs font-semibold text-gray-700 font-mono">
                             {formatDate(note.contact_date || note.created_at)}
@@ -414,8 +589,14 @@ export default function LeadDetailsPage() {
                               {note.created_by}
                             </span>
                           )}
+                          {note.mentioned_users && note.mentioned_users.length > 0 && (
+                            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-teal-50 text-teal-700 border border-teal-100 flex items-center gap-1">
+                              <AtSign className="w-2.5 h-2.5" />
+                              {note.mentioned_users.length} mentioned
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-700 leading-relaxed">{note.content}</p>
+                        <p className="text-sm text-gray-700 leading-relaxed">{renderNoteContent(note.content)}</p>
                       </div>
                     </div>
                   ))}
@@ -439,10 +620,11 @@ export default function LeadDetailsPage() {
 
           {/* Business Tags */}
           <div className="bg-white rounded-2xl border border-dynaton-border overflow-hidden">
-            <div className="px-5 py-4 border-b border-dynaton-border">
+            <div className="px-5 py-4 border-b border-dynaton-border flex items-center justify-between">
               <h2 className="font-display font-bold text-gray-900 text-sm">Business Tags</h2>
             </div>
-            <div className="p-5">
+            <div className="p-5 space-y-3">
+              {/* System tags */}
               <div className="flex flex-wrap gap-2">
                 {lead.is_small_business && (
                   <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
@@ -469,10 +651,67 @@ export default function LeadDetailsPage() {
                     Has Website
                   </span>
                 )}
-                {!lead.is_small_business && !lead.is_informal_business && lead.has_website !== false && !lead.social_media_only && !lead.has_website && (
-                  <span className="text-sm text-gray-300 italic">No tags</span>
-                )}
               </div>
+
+              {/* Custom tags */}
+              {(lead.custom_tags && lead.custom_tags.length > 0) && (
+                <div className="flex flex-wrap gap-2">
+                  {lead.custom_tags.map(tag => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-dynaton-red/10 text-dynaton-red border border-dynaton-red/20"
+                    >
+                      <Tag className="w-3 h-3" />
+                      {tag}
+                      <button
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-dynaton-red-dark ml-0.5 rounded-full hover:bg-dynaton-red/10 p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Add tag input */}
+              {addingTag ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={newTagValue}
+                    onChange={e => setNewTagValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); }
+                      if (e.key === 'Escape') { setAddingTag(false); setNewTagValue(''); }
+                    }}
+                    placeholder="Tag name..."
+                    autoFocus
+                    className="flex-1 px-3 py-1.5 text-xs border border-dynaton-border rounded-lg focus:outline-none focus:ring-2 focus:ring-dynaton-red/20 focus:border-dynaton-red bg-dynaton-gray"
+                  />
+                  <button
+                    onClick={handleAddTag}
+                    disabled={savingTag || !newTagValue.trim()}
+                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-40"
+                  >
+                    {savingTag ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => { setAddingTag(false); setNewTagValue(''); }}
+                    className="p-1.5 text-dynaton-muted hover:bg-dynaton-gray rounded-lg"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingTag(true)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-dynaton-muted hover:text-dynaton-red transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add custom tag
+                </button>
+              )}
             </div>
           </div>
 

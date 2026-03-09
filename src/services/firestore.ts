@@ -40,6 +40,7 @@ export interface Lead {
   informality_score?: number;
   has_website?: boolean;
   social_media_only?: boolean;
+  custom_tags?: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -88,6 +89,7 @@ export interface Note {
   created_by: string;
   created_at: string;
   updated_at?: string;
+  mentioned_users?: string[];
 }
 
 export interface User {
@@ -126,6 +128,18 @@ const enrichmentLogCollection = collection(db, 'enrichment_log');
 const notesCollection = collection(db, 'notes');
 const usersCollection = collection(db, 'users');
 
+// Categories that are generic Google Places tags, not real business categories
+const GENERIC_CATEGORIES = new Set([
+  'point_of_interest', 'establishment', 'premise', 'geocode',
+]);
+
+const resolveCategory = (raw: string | undefined): string | undefined => {
+  if (!raw) return undefined;
+  const parts = raw.split(',').map((s: string) => s.trim());
+  const valid = parts.find(p => !GENERIC_CATEGORIES.has(p.toLowerCase()));
+  return valid ?? parts[0]; // fallback to original if no valid one found
+};
+
 // Helper to convert Firestore doc to Lead
 const docToLead = (doc: QueryDocumentSnapshot<DocumentData>): Lead => {
   const data = doc.data();
@@ -137,7 +151,7 @@ const docToLead = (doc: QueryDocumentSnapshot<DocumentData>): Lead => {
     phone: data.phone,
     email: data.email,
     website: data.website,
-    category: data.category,
+    category: resolveCategory(data.category),
     rating: data.rating,
     total_ratings: data.total_ratings,
     lat: data.lat,
@@ -150,6 +164,7 @@ const docToLead = (doc: QueryDocumentSnapshot<DocumentData>): Lead => {
     informality_score: data.informality_score,
     has_website: data.has_website,
     social_media_only: data.social_media_only,
+    custom_tags: data.custom_tags || [],
     created_at: data.created_at instanceof Timestamp ? data.created_at.toDate().toISOString() : data.created_at,
     updated_at: data.updated_at instanceof Timestamp ? data.updated_at.toDate().toISOString() : data.updated_at,
   };
@@ -304,6 +319,23 @@ export const leadsService = {
     };
   },
 
+  // Create lead
+  async create(data: Omit<Lead, 'id'>) {
+    const newLead = {
+      ...data,
+      status: data.status || 'new',
+      custom_tags: data.custom_tags || [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const docRef = await addDoc(leadsCollection, newLead);
+    const createdDoc = await getDoc(docRef);
+    return {
+      success: true,
+      data: docToLead(createdDoc as QueryDocumentSnapshot<DocumentData>),
+    };
+  },
+
   // Delete lead
   async delete(id: string) {
     const docRef = doc(leadsCollection, id);
@@ -337,16 +369,19 @@ export const notesService = {
     content: string,
     createdBy: string,
     contactMethod?: string,
-    contactDate?: string
+    contactDate?: string,
+    mentionedUsers?: string[]
   ) {
-    const noteData = {
+    // Firestore rejects `undefined` values — only include defined fields
+    const noteData: Record<string, unknown> = {
       lead_id: leadId,
       content,
       created_by: createdBy,
-      contact_method: contactMethod,
-      contact_date: contactDate,
+      mentioned_users: mentionedUsers || [],
       created_at: new Date().toISOString(),
     };
+    if (contactMethod !== undefined) noteData.contact_method = contactMethod;
+    if (contactDate !== undefined) noteData.contact_date = contactDate;
 
     const docRef = await addDoc(notesCollection, noteData);
     return {
@@ -355,10 +390,11 @@ export const notesService = {
     };
   },
 
-  async update(noteId: string, content: string) {
+  async update(noteId: string, content: string, mentionedUsers?: string[]) {
     const docRef = doc(notesCollection, noteId);
     await updateDoc(docRef, {
       content,
+      mentioned_users: mentionedUsers || [],
       updated_at: new Date().toISOString(),
     });
 
@@ -420,6 +456,12 @@ export const usersService = {
       data: { id: docRef.id, ...newUserData } as User,
       isNew: true,
     };
+  },
+
+  async getAll() {
+    const snapshot = await getDocs(usersCollection);
+    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as User[];
+    return { success: true, data: users };
   },
 
   async getByGoogleId(googleId: string) {
