@@ -18,6 +18,11 @@
   --color-dynaton-muted: #8A8A9A;
 }
 
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Base styles */
 body {
   @apply bg-dynaton-gray text-gray-900 antialiased;

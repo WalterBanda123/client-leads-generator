@@ -5,6 +5,7 @@ import {
   Phone, Mail, Globe, ExternalLink, Eye,
   PhoneCall, ChevronDown, MoreHorizontal, Trash2,
   Download, Tag, Plus, Flame, LayoutGrid, List,
+  ArrowUpDown, ArrowUp, ArrowDown, X,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { leadsAPI } from '../services/api';
@@ -13,9 +14,12 @@ import { formatCategory } from '../utils/formatters';
 import ContactStatusModal from './ContactStatusModal';
 import ConfirmModal from './ConfirmModal';
 import ManageTagsModal from './ManageTagsModal';
+import { useToast } from '../contexts/ToastContext';
 
 type StatusFilter = 'all' | 'not_contacted' | 'contacted';
 type ViewMode = 'table' | 'kanban';
+type SortField = 'name' | 'category' | 'status' | 'created';
+type SortDir = 'asc' | 'desc';
 
 const isValidStatusFilter = (value: string | null): value is StatusFilter =>
   value === 'all' || value === 'not_contacted' || value === 'contacted';
@@ -56,6 +60,7 @@ const EXCLUDED_CATEGORIES = new Set([
 
 export default function LeadsDashboard() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -84,6 +89,27 @@ export default function LeadsDashboard() {
 
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+
+  // Sort
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else { setSortField(null); setSortDir('asc'); }
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-300" />;
+    return sortDir === 'asc'
+      ? <ArrowUp className="w-3 h-3 text-[#CE0505]" />
+      : <ArrowDown className="w-3 h-3 text-[#CE0505]" />;
+  };
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -167,13 +193,28 @@ export default function LeadsDashboard() {
         );
       }
 
-      // Stale leads float to top within their group
-      filtered.sort((a, b) => {
-        const aStale = isStale(a) ? 0 : 1;
-        const bStale = isStale(b) ? 0 : 1;
-        if (aStale !== bStale) return aStale - bStale;
-        return 0; // preserve existing order otherwise
-      });
+      // Sort
+      if (sortField) {
+        filtered.sort((a, b) => {
+          let aVal = '';
+          let bVal = '';
+          if (sortField === 'name') { aVal = a.business_name.toLowerCase(); bVal = b.business_name.toLowerCase(); }
+          else if (sortField === 'category') { aVal = (a.category || '').toLowerCase(); bVal = (b.category || '').toLowerCase(); }
+          else if (sortField === 'status') { aVal = a.status || 'new'; bVal = b.status || 'new'; }
+          else if (sortField === 'created') { aVal = a.created_at || ''; bVal = b.created_at || ''; }
+          if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+          if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      } else {
+        // Default: stale leads float to top
+        filtered.sort((a, b) => {
+          const aStale = isStale(a) ? 0 : 1;
+          const bStale = isStale(b) ? 0 : 1;
+          if (aStale !== bStale) return aStale - bStale;
+          return 0;
+        });
+      }
 
       const allData = allLeadsForCategories;
       const contactedTotal = allData.filter(l =>
@@ -194,7 +235,7 @@ export default function LeadsDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, categoryFilter, searchQuery, currentPage, itemsPerPage, allLeadsForCategories, dataReady]);
+  }, [statusFilter, categoryFilter, searchQuery, currentPage, itemsPerPage, allLeadsForCategories, dataReady, sortField, sortDir]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
   useEffect(() => { setCurrentPage(1); }, [statusFilter, categoryFilter, searchQuery, itemsPerPage]);
@@ -246,8 +287,9 @@ export default function LeadsDashboard() {
     try {
       await leadsAPI.delete(selectedLead._id);
       setAllLeadsForCategories(prev => prev.filter(l => l._id !== selectedLead._id));
-    } catch (error) {
-      console.error('Error deleting lead:', error);
+      toast('Lead deleted', 'success');
+    } catch {
+      toast('Failed to delete lead', 'error');
     } finally {
       setActionLoading(false);
       setShowDeleteModal(false);
@@ -261,9 +303,9 @@ export default function LeadsDashboard() {
     try {
       const newStatus = isContacted(selectedLead) ? 'new' : 'contacted';
       const response = await leadsAPI.update(selectedLead._id, { status: newStatus });
-      if (response.data.success) fetchLeads();
-    } catch (error) {
-      console.error('Error updating lead status:', error);
+      if (response.data.success) { fetchLeads(); toast('Status updated', 'success'); }
+    } catch {
+      toast('Failed to update status', 'error');
     } finally {
       setActionLoading(false);
       setShowContactModal(false);
@@ -308,8 +350,9 @@ export default function LeadsDashboard() {
       await Promise.all([...selectedIds].map(id => leadsAPI.delete(id)));
       setAllLeadsForCategories(prev => prev.filter(l => !selectedIds.has(l._id)));
       setSelectedIds(new Set());
-    } catch (error) {
-      console.error('Error bulk deleting:', error);
+      toast(`${selectedIds.size} leads deleted`, 'success');
+    } catch {
+      toast('Failed to delete leads', 'error');
     } finally {
       setActionLoading(false);
       setShowBulkDeleteModal(false);
@@ -323,9 +366,10 @@ export default function LeadsDashboard() {
       if (response.data.success) {
         setAllLeadsForCategories(response.data.data);
       }
+      toast(`${selectedIds.size} leads updated`, 'success');
       setSelectedIds(new Set());
-    } catch (error) {
-      console.error('Error bulk status change:', error);
+    } catch {
+      toast('Failed to update leads', 'error');
     }
   };
 
@@ -402,9 +446,10 @@ export default function LeadsDashboard() {
       const response = await leadsAPI.update(leadId, { status: newStatus as Lead['status'] });
       if (response.data.success) {
         setAllLeadsForCategories(prev => prev.map(l => l._id === leadId ? response.data.data : l));
+        toast('Lead moved', 'success');
       }
-    } catch (error) {
-      console.error('Error updating lead status:', error);
+    } catch {
+      toast('Failed to move lead', 'error');
     }
   };
 
@@ -461,52 +506,49 @@ export default function LeadsDashboard() {
         </div>
       </div>
 
-      {/* Stat cards — subtle */}
-      <div className="grid grid-cols-3 gap-3">
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={`text-left px-4 py-3 rounded-md bg-white transition-colors ${
-            statusFilter === 'all' ? 'ring-1 ring-gray-300' : 'hover:bg-gray-50'
-          }`}
-        >
-          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Total Leads</p>
-          <p className="text-2xl font-bold text-gray-900 tabular-nums mt-0.5">
-            {loading ? '—' : stats.all.toLocaleString()}
-          </p>
-          <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden flex">
-            <div className="bg-emerald-400 h-full transition-all" style={{ width: `${contactedPct}%` }} />
+      {/* Stats + Filters */}
+      <div className="flex items-center gap-6 border-b border-gray-200 pb-3">
+        {/* Status tabs */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              statusFilter === 'all'
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            All <span className="ml-1 tabular-nums">{loading ? '—' : stats.all.toLocaleString()}</span>
+          </button>
+          <button
+            onClick={() => setStatusFilter('not_contacted')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              statusFilter === 'not_contacted'
+                ? 'bg-amber-500 text-white'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            Pending <span className="ml-1 tabular-nums">{loading ? '—' : stats.notContacted.toLocaleString()}</span>
+          </button>
+          <button
+            onClick={() => setStatusFilter('contacted')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              statusFilter === 'contacted'
+                ? 'bg-emerald-500 text-white'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            Contacted <span className="ml-1 tabular-nums">{loading ? '—' : stats.contacted.toLocaleString()}</span>
+          </button>
+        </div>
+
+        {/* Progress indicator */}
+        <div className="flex items-center gap-2">
+          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="bg-emerald-500 h-full rounded-full transition-all" style={{ width: `${contactedPct}%` }} />
           </div>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('not_contacted')}
-          className={`text-left px-4 py-3 rounded-md bg-white transition-colors ${
-            statusFilter === 'not_contacted' ? 'ring-1 ring-amber-300' : 'hover:bg-gray-50'
-          }`}
-        >
-          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Pending</p>
-          <p className="text-2xl font-bold text-gray-900 tabular-nums mt-0.5">
-            {loading ? '—' : stats.notContacted.toLocaleString()}
-          </p>
-          <p className="text-[10px] text-amber-600 font-medium mt-2">
-            {!loading && stats.all > 0 ? `${100 - contactedPct}% awaiting contact` : '—'}
-          </p>
-        </button>
-
-        <button
-          onClick={() => setStatusFilter('contacted')}
-          className={`text-left px-4 py-3 rounded-md bg-white transition-colors ${
-            statusFilter === 'contacted' ? 'ring-1 ring-emerald-300' : 'hover:bg-gray-50'
-          }`}
-        >
-          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Contacted</p>
-          <p className="text-2xl font-bold text-gray-900 tabular-nums mt-0.5">
-            {loading ? '—' : stats.contacted.toLocaleString()}
-          </p>
-          <p className="text-[10px] text-emerald-600 font-medium mt-2">
-            {!loading && stats.all > 0 ? `${contactedPct}% reached` : '—'}
-          </p>
-        </button>
+          <span className="text-[10px] text-gray-400 tabular-nums">{contactedPct}%</span>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -540,13 +582,47 @@ export default function LeadsDashboard() {
             onChange={(e) => setItemsPerPage(Number(e.target.value))}
             className="appearance-none bg-white border border-gray-200 rounded-md px-3 py-2 pr-8 text-xs font-medium text-gray-600 focus:outline-none focus:border-gray-400 cursor-pointer"
           >
-            <option value={10}>10</option>
-            <option value={15}>15</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
+            <option value={10}>10 per page</option>
+            <option value={15}>15 per page</option>
+            <option value={25}>25 per page</option>
+            <option value={50}>50 per page</option>
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
         </div>
+
+        {/* Active filter pills */}
+        {(categoryFilter !== 'all' || searchQuery || sortField) && (
+          <div className="flex items-center gap-1.5 ml-1">
+            <span className="text-[10px] text-gray-400">Filters:</span>
+            {categoryFilter !== 'all' && (
+              <button
+                onClick={() => setCategoryFilter('all')}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                {formatCategory(categoryFilter)}
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                "{searchQuery}"
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            {sortField && (
+              <button
+                onClick={() => { setSortField(null); setSortDir('asc'); }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Sort: {sortField} {sortDir === 'asc' ? '↑' : '↓'}
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bulk action bar */}
@@ -698,7 +774,7 @@ export default function LeadsDashboard() {
       )}
 
       {/* Table */}
-      {viewMode === 'table' && <div className="bg-white rounded-md overflow-hidden">
+      {viewMode === 'table' && <div className="bg-white rounded-md border border-gray-200 overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
@@ -711,20 +787,26 @@ export default function LeadsDashboard() {
                   className="w-3.5 h-3.5 rounded border-gray-300 text-[#CE0505] focus:ring-0 cursor-pointer accent-[#CE0505]"
                 />
               </th>
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                Name
+              <th className="px-3 py-2.5 text-left">
+                <button onClick={() => toggleSort('name')} className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                  Name <SortIcon field="name" />
+                </button>
               </th>
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                 Contact
               </th>
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                Category
+              <th className="px-3 py-2.5 text-left hidden lg:table-cell">
+                <button onClick={() => toggleSort('category')} className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                  Category <SortIcon field="category" />
+                </button>
               </th>
               <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">
                 Tags
               </th>
-              <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                Status
+              <th className="px-3 py-2.5 text-left">
+                <button onClick={() => toggleSort('status')} className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                  Status <SortIcon field="status" />
+                </button>
               </th>
               <th className="px-3 py-2.5 w-20" />
             </tr>
@@ -751,14 +833,12 @@ export default function LeadsDashboard() {
                 return (
                   <tr
                     key={lead._id}
-                    className={`border-b border-gray-100 transition-colors group ${
-                      checked ? 'bg-blue-50/40' :
-                      stale ? 'bg-orange-50/40' :
-                      'hover:bg-gray-50/60'
+                    className={`border-b border-gray-100 transition-colors group bg-white ${
+                      checked ? 'bg-blue-50/30' : 'hover:bg-gray-50/40'
                     }`}
                   >
                     {/* Checkbox */}
-                    <td className="w-10 px-3 py-3">
+                    <td className="w-10 px-3 py-4">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -768,7 +848,7 @@ export default function LeadsDashboard() {
                     </td>
 
                     {/* Name */}
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-4">
                       <button
                         onClick={() => navigate(`/leads/${lead._id}`)}
                         className="text-left group/name"
@@ -786,7 +866,7 @@ export default function LeadsDashboard() {
                     </td>
 
                     {/* Contact */}
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-4">
                       <div className="flex flex-col gap-0.5">
                         {lead.phone && (
                           <a href={`tel:${lead.phone}`} className="text-[11px] text-gray-600 hover:text-[#CE0505] flex items-center gap-1 font-mono w-fit">
@@ -814,7 +894,7 @@ export default function LeadsDashboard() {
                     </td>
 
                     {/* Category */}
-                    <td className="px-3 py-3 hidden lg:table-cell">
+                    <td className="px-3 py-4 hidden lg:table-cell">
                       {lead.category ? (
                         <span className="text-[11px] text-gray-500">{formatCategory(lead.category)}</span>
                       ) : (
@@ -823,7 +903,7 @@ export default function LeadsDashboard() {
                     </td>
 
                     {/* Tags */}
-                    <td className="px-3 py-3 hidden md:table-cell">
+                    <td className="px-3 py-4 hidden md:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {lead.custom_tags && lead.custom_tags.length > 0 ? (
                           <>
@@ -845,7 +925,7 @@ export default function LeadsDashboard() {
                     </td>
 
                     {/* Status */}
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-4">
                       {lead.status === 'converted' ? (
                         <span className="text-[11px] font-medium text-emerald-600">Converted</span>
                       ) : lead.status === 'qualified' ? (
@@ -862,7 +942,7 @@ export default function LeadsDashboard() {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-4">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => navigate(`/leads/${lead._id}`)}
@@ -916,15 +996,22 @@ export default function LeadsDashboard() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-100 text-xs text-gray-500">
-            <span>
-              {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, total)} of {total.toLocaleString()}
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-xs text-gray-500">
+            <span className="text-gray-400">
+              Showing <span className="font-medium text-gray-600">{(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, total)}</span> of <span className="font-medium text-gray-600">{total.toLocaleString()}</span>
             </span>
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1 || loading}
+                className="px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-50 rounded-md disabled:opacity-30 transition-colors"
+              >
+                First
+              </button>
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1 || loading}
-                className="p-1.5 hover:bg-gray-100 rounded disabled:opacity-30 transition-colors"
+                className="p-1.5 hover:bg-gray-50 rounded-md disabled:opacity-30 transition-colors"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
@@ -939,10 +1026,10 @@ export default function LeadsDashboard() {
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
                     disabled={loading}
-                    className={`w-7 h-7 text-[11px] font-medium rounded transition-colors ${
+                    className={`w-8 h-8 text-[11px] font-medium rounded-md transition-colors ${
                       currentPage === pageNum
-                        ? 'bg-gray-900 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'bg-[#CE0505] text-white'
+                        : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
                     {pageNum}
@@ -952,9 +1039,16 @@ export default function LeadsDashboard() {
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages || loading}
-                className="p-1.5 hover:bg-gray-100 rounded disabled:opacity-30 transition-colors"
+                className="p-1.5 hover:bg-gray-50 rounded-md disabled:opacity-30 transition-colors"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages || loading}
+                className="px-2 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-50 rounded-md disabled:opacity-30 transition-colors"
+              >
+                Last
               </button>
             </div>
           </div>

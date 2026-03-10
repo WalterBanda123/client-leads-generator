@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { leadsAPI } from '../services/api';
 import type { Lead } from '../services/api';
+import { useToast } from '../contexts/ToastContext';
 
 const CATEGORIES = [
   'Automotive', 'Beauty & Wellness', 'Construction', 'Education',
@@ -17,6 +18,7 @@ const CATEGORIES = [
 
 export default function AddBusinessPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [form, setForm] = useState({
     business_name: '',
@@ -60,10 +62,11 @@ export default function AddBusinessPage() {
       };
       const res = await leadsAPI.create(payload);
       if (res.data.success) {
+        toast('Business added successfully', 'success');
         navigate(`/leads/${res.data.data._id}`);
       }
-    } catch (err) {
-      console.error('Failed to create business:', err);
+    } catch {
+      toast('Failed to add business', 'error');
     } finally {
       setSaving(false);
     }
@@ -72,7 +75,7 @@ export default function AddBusinessPage() {
   const inputClass = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400 transition-colors placeholder-gray-400';
 
   return (
-    <div className="max-w-2xl">
+    <div>
       {/* Back */}
       <button
         onClick={() => navigate('/')}
@@ -95,45 +98,47 @@ export default function AddBusinessPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-md border border-gray-200">
-        {/* Business Name — prominent */}
+        {/* Business Name + Category — side by side */}
         <div className="p-4 border-b border-gray-100">
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            Business Name <span className="text-[#CE0505]">*</span>
-          </label>
-          <input
-            type="text"
-            value={form.business_name}
-            onChange={e => set('business_name', e.target.value)}
-            placeholder="e.g. Acme Restaurant"
-            autoFocus
-            className={`${inputClass} ${errors.business_name ? 'border-red-300 bg-red-50/30' : ''}`}
-          />
-          {errors.business_name && (
-            <p className="text-[11px] text-red-500 mt-1">{errors.business_name}</p>
-          )}
-        </div>
-
-        {/* Category */}
-        <div className="p-4 border-b border-gray-100">
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            Category
-          </label>
-          <select
-            value={form.category}
-            onChange={e => set('category', e.target.value)}
-            className={`${inputClass} appearance-none cursor-pointer`}
-          >
-            <option value="">Select a category...</option>
-            {CATEGORIES.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                Business Name <span className="text-[#CE0505]">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.business_name}
+                onChange={e => set('business_name', e.target.value)}
+                placeholder="e.g. Acme Restaurant"
+                autoFocus
+                className={`${inputClass} ${errors.business_name ? 'border-red-300 bg-red-50/30' : ''}`}
+              />
+              {errors.business_name && (
+                <p className="text-[11px] text-red-500 mt-1">{errors.business_name}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                Category
+              </label>
+              <select
+                value={form.category}
+                onChange={e => set('category', e.target.value)}
+                className={`${inputClass} appearance-none cursor-pointer`}
+              >
+                <option value="">Select a category...</option>
+                {CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Contact details section */}
         <div className="p-4 border-b border-gray-100">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Contact Details</p>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Phone */}
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-md bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
@@ -180,8 +185,8 @@ export default function AddBusinessPage() {
 
         {/* Address */}
         <div className="p-4 border-b border-gray-100">
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
               <MapPin className="w-3 h-3 text-gray-400" />
             </div>
             <div className="flex-1">
@@ -200,7 +205,7 @@ export default function AddBusinessPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2 p-4 bg-gray-50">
+        <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-100">
           <button
             type="button"
             onClick={() => navigate('/')}

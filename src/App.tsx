@@ -39,7 +39,7 @@ function SignOutDialog({ onConfirm, onCancel }: { onConfirm: () => void; onCance
             Are you sure you want to sign out? You'll need to sign in again to access the dashboard.
           </p>
         </div>
-        <div className="flex items-center justify-end gap-2 px-5 py-3 bg-gray-50 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100">
           <button
             onClick={onCancel}
             className="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
@@ -101,7 +101,7 @@ function App() {
     : '?';
 
   return (
-    <div className="flex min-h-screen bg-[#F7F8FA]">
+    <div className="flex min-h-screen bg-white">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 bottom-0 w-[220px] flex flex-col z-40 bg-white border-r border-gray-200">
         {/* Logo area */}
@@ -144,7 +144,7 @@ function App() {
         {/* User footer */}
         {user && (
           <div className="px-3 py-3 border-t border-gray-100">
-            <div className="flex items-center gap-2.5 px-2 py-2 rounded-md bg-gray-50 mb-1.5">
+            <div className="flex items-center gap-2.5 px-2 py-2 rounded-md mb-1.5">
               {user.picture ? (
                 <img
                   src={user.picture}
@@ -173,7 +173,7 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="ml-[220px] flex-1 min-h-screen bg-[#F7F8FA]">
+      <main className="ml-[220px] flex-1 min-h-screen bg-white">
         <div className="max-w-[1400px] mx-auto px-6 py-6">
           <Outlet />
         </div>

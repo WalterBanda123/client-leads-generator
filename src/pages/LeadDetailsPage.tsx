@@ -11,8 +11,17 @@ import type { Lead, Note, LeadDetailsResponse, SocialProfile, User as UserType }
 import { formatCategory } from '../utils/formatters';
 import ContactStatusModal from '../components/ContactStatusModal';
 import LocationMap from '../components/LocationMap';
+import { useToast } from '../contexts/ToastContext';
 
 type Tab = 'contact' | 'notes' | 'tags';
+
+const CATEGORIES = [
+  'Automotive', 'Beauty & Wellness', 'Car Repair', 'Car Wash', 'Construction', 'Education',
+  'Entertainment', 'Fashion', 'Finance', 'Food & Beverage',
+  'Healthcare', 'Home Services', 'Legal', 'Professional Services',
+  'Real Estate', 'Restaurant', 'Retail', 'Technology',
+  'Travel & Tourism', 'Other',
+];
 
 const STATUS_STEPS: { key: Lead['status']; label: string }[] = [
   { key: 'contacted', label: 'Contacted' },
@@ -26,6 +35,7 @@ const STATUS_ORDER = ['new', 'contacted', 'qualified', 'converted', 'lost'];
 export default function LeadDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [contacts, setContacts] = useState<LeadDetailsResponse['contacts']>([]);
@@ -37,7 +47,7 @@ export default function LeadDetailsPage() {
 
   // Contact edit mode — single toggle for all fields
   const [editingContact, setEditingContact] = useState(false);
-  const [editForm, setEditForm] = useState({ phone: '', email: '', website: '' });
+  const [editForm, setEditForm] = useState({ phone: '', email: '', website: '', category: '' });
   const [saving, setSaving] = useState(false);
 
   // Status update
@@ -99,13 +109,14 @@ export default function LeadDetailsPage() {
       phone: lead.phone || '',
       email: lead.email || '',
       website: lead.website || '',
+      category: lead.category || '',
     });
     setEditingContact(true);
   };
 
   const cancelEditingContact = () => {
     setEditingContact(false);
-    setEditForm({ phone: '', email: '', website: '' });
+    setEditForm({ phone: '', email: '', website: '', category: '' });
   };
 
   const handleSaveContact = async () => {
@@ -116,10 +127,11 @@ export default function LeadDetailsPage() {
       if (editForm.phone !== (lead.phone || '')) updates.phone = editForm.phone || undefined;
       if (editForm.email !== (lead.email || '')) updates.email = editForm.email || undefined;
       if (editForm.website !== (lead.website || '')) updates.website = editForm.website || undefined;
+      if (editForm.category !== (lead.category || '')) updates.category = editForm.category || undefined;
       if (Object.keys(updates).length === 0) { cancelEditingContact(); return; }
       const res = await leadsAPI.update(lead._id, updates);
-      if (res.data.success) { setLead(res.data.data); cancelEditingContact(); }
-    } catch { /* silent */ }
+      if (res.data.success) { setLead(res.data.data); cancelEditingContact(); toast('Contact info updated', 'success'); }
+    } catch { toast('Failed to update contact info', 'error'); }
     finally { setSaving(false); }
   };
 
@@ -134,8 +146,8 @@ export default function LeadDetailsPage() {
     try {
       setUpdatingStatus(true);
       const res = await leadsAPI.update(lead._id, { status: pendingStatus });
-      if (res.data.success) setLead(res.data.data);
-    } catch { /* silent */ }
+      if (res.data.success) { setLead(res.data.data); toast('Status updated', 'success'); }
+    } catch { toast('Failed to update status', 'error'); }
     finally { setUpdatingStatus(false); setPendingStatus(null); }
   };
 
@@ -148,8 +160,8 @@ export default function LeadDetailsPage() {
     try {
       setSavingTag(true);
       const res = await leadsAPI.update(lead._id, { custom_tags: [...existing, tag] });
-      if (res.data.success) setLead(res.data.data);
-    } catch { /* silent */ }
+      if (res.data.success) { setLead(res.data.data); toast('Tag added', 'success'); }
+    } catch { toast('Failed to add tag', 'error'); }
     finally { setSavingTag(false); setNewTagValue(''); setAddingTag(false); }
   };
 
@@ -188,7 +200,8 @@ export default function LeadDetailsPage() {
       setSavingNote(true);
       await notesAPI.create(lead._id, noteText.trim(), 'Team', undefined, undefined, mentionedUserIds);
       setNoteText(''); setMentionedUserIds([]); fetchNotes();
-    } catch { /* silent */ }
+      toast('Note posted', 'success');
+    } catch { toast('Failed to post note', 'error'); }
     finally { setSavingNote(false); }
   };
 
@@ -550,6 +563,35 @@ export default function LeadDetailsPage() {
                 </div>
 
                 <div className="space-y-2.5">
+                  {/* Category */}
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
+                    <div className="w-7 h-7 rounded-md bg-white border border-gray-200 flex items-center justify-center shrink-0 text-gray-400">
+                      <Tag className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Category</p>
+                      {editingContact ? (
+                        <select
+                          value={editForm.category}
+                          onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                          className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:border-gray-400 bg-white appearance-none cursor-pointer"
+                        >
+                          <option value="">No category</option>
+                          {CATEGORIES.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                          {lead.category && !CATEGORIES.includes(lead.category) && (
+                            <option value={lead.category}>{formatCategory(lead.category)}</option>
+                          )}
+                        </select>
+                      ) : lead.category ? (
+                        <span className="text-sm text-gray-800">{formatCategory(lead.category)}</span>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">Not set</span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Phone */}
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
                     <div className="w-7 h-7 rounded-md bg-white border border-gray-200 flex items-center justify-center shrink-0 text-gray-400">

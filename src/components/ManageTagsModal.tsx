@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Tag, Plus, Loader2 } from 'lucide-react';
 import { leadsAPI } from '../services/api';
 import type { Lead } from '../services/api';
+import { useToast } from '../contexts/ToastContext';
 
 interface Props {
   isOpen: boolean;
@@ -13,18 +14,22 @@ interface Props {
 export default function ManageTagsModal({ isOpen, lead, onClose, onSuccess }: Props) {
   const [newTag, setNewTag] = useState('');
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
 
   if (!isOpen || !lead) return null;
 
   const tags = lead.custom_tags || [];
 
-  const save = async (updated: string[]) => {
+  const save = async (updated: string[], action: 'added' | 'removed', tagName: string) => {
     try {
       setSaving(true);
       const res = await leadsAPI.update(lead._id, { custom_tags: updated });
-      if (res.data.success) onSuccess(res.data.data);
-    } catch (err) {
-      console.error('Failed to update tags:', err);
+      if (res.data.success) {
+        onSuccess(res.data.data);
+        toast(`Tag "${tagName}" ${action}`, 'success');
+      }
+    } catch {
+      toast('Failed to update tags', 'error');
     } finally {
       setSaving(false);
     }
@@ -33,48 +38,47 @@ export default function ManageTagsModal({ isOpen, lead, onClose, onSuccess }: Pr
   const handleAdd = async () => {
     const tag = newTag.trim();
     if (!tag || tags.includes(tag)) { setNewTag(''); return; }
-    await save([...tags, tag]);
+    await save([...tags, tag], 'added', tag);
     setNewTag('');
   };
 
-  const handleRemove = (tag: string) => save(tags.filter(t => t !== tag));
+  const handleRemove = (tag: string) => save(tags.filter(t => t !== tag), 'removed', tag);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className="h-1 bg-dynaton-red" />
-        <div className="flex items-center justify-between px-5 py-4">
+      <div className="w-full max-w-sm bg-white rounded-md border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-dynaton-red/10 rounded-lg flex items-center justify-center">
-              <Tag className="w-4 h-4 text-dynaton-red" />
+            <div className="w-8 h-8 bg-[#CE0505]/8 rounded-md flex items-center justify-center">
+              <Tag className="w-4 h-4 text-[#CE0505]" />
             </div>
             <div>
-              <p className="font-display font-bold text-gray-900 text-sm">Manage Tags</p>
-              <p className="text-xs text-dynaton-muted font-mono truncate max-w-48">{lead.business_name}</p>
+              <p className="font-semibold text-gray-900 text-sm">Manage Tags</p>
+              <p className="text-xs text-gray-400 truncate max-w-48">{lead.business_name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-dynaton-muted hover:text-gray-700 hover:bg-dynaton-gray rounded-lg">
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-md transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-5 pb-5 space-y-4">
+        <div className="px-4 py-4 space-y-4">
           {/* Existing tags */}
           {tags.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {tags.map(tag => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-dynaton-red/10 text-dynaton-red"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-gray-50 border border-gray-200 text-gray-700"
                 >
                   {tag}
                   <button
                     onClick={() => handleRemove(tag)}
                     disabled={saving}
-                    className="hover:bg-dynaton-red/20 rounded-full p-0.5 disabled:opacity-40"
+                    className="hover:bg-gray-200 rounded p-0.5 disabled:opacity-40 transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -82,7 +86,7 @@ export default function ManageTagsModal({ isOpen, lead, onClose, onSuccess }: Pr
               ))}
             </div>
           ) : (
-            <p className="text-sm text-dynaton-muted italic">No custom tags yet</p>
+            <p className="text-sm text-gray-400">No custom tags yet</p>
           )}
 
           {/* Add new */}
@@ -93,13 +97,13 @@ export default function ManageTagsModal({ isOpen, lead, onClose, onSuccess }: Pr
               onChange={e => setNewTag(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
               placeholder="Add a tag..."
-              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-gray-400 transition-colors placeholder-gray-400"
               autoFocus
             />
             <button
               onClick={handleAdd}
               disabled={saving || !newTag.trim()}
-              className="p-2 text-dynaton-red bg-dynaton-red/10 hover:bg-dynaton-red hover:text-white rounded-lg disabled:opacity-40 transition-colors"
+              className="p-2 text-white bg-[#CE0505] hover:bg-[#b00404] rounded-md disabled:opacity-40 transition-colors"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             </button>
@@ -107,7 +111,7 @@ export default function ManageTagsModal({ isOpen, lead, onClose, onSuccess }: Pr
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 text-sm font-semibold text-gray-600 bg-dynaton-gray rounded-lg hover:bg-gray-100 transition-colors"
+            className="w-full py-2 text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
           >
             Done
           </button>

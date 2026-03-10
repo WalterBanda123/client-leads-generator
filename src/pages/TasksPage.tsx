@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { tasksAPI, leadsAPI } from '../services/api';
 import type { TaskAPI, Lead } from '../services/api';
+import { useToast } from '../contexts/ToastContext';
 
 type FilterStatus = 'active' | 'completed' | 'all';
 type FilterPriority = 'all' | 'high' | 'medium' | 'low';
@@ -152,6 +153,7 @@ function LeadPicker({
 
 export default function TasksPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [tasks, setTasks] = useState<TaskAPI[]>([]);
   const [leadsMap, setLeadsMap] = useState<Record<string, Lead>>({});
@@ -225,19 +227,26 @@ export default function TasksPage() {
       resetForm();
       setShowForm(false);
       fetchTasks();
-    } catch { /* silent */ }
+      toast('Task created', 'success');
+    } catch { toast('Failed to create task', 'error'); }
     finally { setSaving(false); }
   };
 
   const handleToggle = async (task: TaskAPI) => {
-    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-    await tasksAPI.update(task._id, { status: newStatus });
-    fetchTasks();
+    try {
+      const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+      await tasksAPI.update(task._id, { status: newStatus });
+      fetchTasks();
+      toast(newStatus === 'completed' ? 'Task completed' : 'Task reopened', 'success');
+    } catch { toast('Failed to update task', 'error'); }
   };
 
   const handleDelete = async (taskId: string) => {
-    await tasksAPI.delete(taskId);
-    fetchTasks();
+    try {
+      await tasksAPI.delete(taskId);
+      fetchTasks();
+      toast('Task deleted', 'success');
+    } catch { toast('Failed to delete task', 'error'); }
   };
 
   // Filtering
